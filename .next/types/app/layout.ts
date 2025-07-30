@@ -1,4 +1,4 @@
-// File: C:\Users\user\Desktop\New folder\src\app\layout.tsx
+// File: F:\4tb jobs backup\jobs\taitil graphics\website vansh\Taitil-Graphics\src\app\layout.tsx
 import * as entry from '../../../src/app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
