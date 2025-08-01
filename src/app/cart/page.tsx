@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from '@/components/providers/AuthProvider'
-import { useCart } from '@/components/cart/CartProvider'
+import { useCart } from '@/components/providers/CartProvider'
 import Header from '@/components/layout/Header'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -9,12 +9,7 @@ import { Plus, Minus, Trash2, ShoppingBag, ArrowLeft } from 'lucide-react'
 
 export default function CartPage() {
   const { user } = useAuth()
-  const { items, total, updateQuantity, removeItem, itemCount } = useCart()
-
-  const subtotal = total
-  const tax = total * 0.08 // 8% tax
-  const shipping = total > 100 ? 0 : 15 // Free shipping over $100
-  const finalTotal = subtotal + tax + shipping
+  const { cartItems, updateQuantity, removeFromCart, cartItemCount } = useCart()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -31,11 +26,11 @@ export default function CartPage() {
           </Link>
           
           <h1 className="text-3xl font-bold text-gray-900">
-            Shopping Cart ({itemCount} {itemCount === 1 ? 'item' : 'items'})
+            Shopping Cart ({cartItemCount} {cartItemCount === 1 ? 'item' : 'items'})
           </h1>
         </div>
 
-        {items.length === 0 ? (
+        {cartItems.length === 0 ? (
           <div className="text-center py-16">
             <ShoppingBag className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Your cart is empty</h3>
@@ -53,7 +48,7 @@ export default function CartPage() {
                   <h2 className="text-lg font-semibold mb-6">Cart Items</h2>
                   
                   <div className="space-y-6">
-                    {items.map((item) => (
+                    {cartItems.map((item) => (
                       <div key={item.id} className="flex items-center space-x-4 pb-6 border-b border-gray-200 last:border-b-0">
                         <div className="relative w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                           <Image
@@ -69,7 +64,7 @@ export default function CartPage() {
                             {item.name}
                           </h3>
                           <p className="text-sm text-gray-500 mb-2">
-                            ${item.price.toFixed(2)} each
+                            Contact for pricing
                           </p>
                           
                           {/* Customizations */}
@@ -107,7 +102,7 @@ export default function CartPage() {
                             </div>
                             
                             <button
-                              onClick={() => removeItem(item.id)}
+                              onClick={() => removeFromCart(item.id)}
                               className="flex items-center space-x-1 text-red-500 hover:text-red-700 text-sm"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -117,8 +112,8 @@ export default function CartPage() {
                         </div>
                         
                         <div className="text-right">
-                          <p className="font-semibold text-lg">
-                            ${(item.price * item.quantity).toFixed(2)}
+                          <p className="font-semibold text-lg text-primary-600">
+                            Quote Required
                           </p>
                         </div>
                       </div>
@@ -131,70 +126,40 @@ export default function CartPage() {
             {/* Order Summary */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-8">
-                <h2 className="text-lg font-semibold mb-6">Order Summary</h2>
-                
-                <div className="space-y-4 mb-6">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span>${subtotal.toFixed(2)}</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tax</span>
-                    <span>${tax.toFixed(2)}</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Shipping</span>
-                    <span>
-                      {shipping === 0 ? (
-                        <span className="text-green-600">Free</span>
-                      ) : (
-                        `$${shipping.toFixed(2)}`
-                      )}
-                    </span>
-                  </div>
-                  
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between text-lg font-semibold">
-                      <span>Total</span>
-                      <span>${finalTotal.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
+                <h2 className="text-lg font-semibold mb-6">Get Your Quote</h2>
 
-                {shipping > 0 && (
-                  <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      Add ${(100 - subtotal).toFixed(2)} more for free shipping!
+                <div className="space-y-4 mb-6">
+                  <div className="bg-secondary-50 p-4 rounded-lg">
+                    <h3 className="font-medium text-gray-900 mb-2">Custom Pricing</h3>
+                    <p className="text-sm text-gray-600">
+                      All our products are custom-made with personalized pricing based on your requirements, quantity, and specifications.
                     </p>
                   </div>
-                )}
+
+                  <div className="bg-primary-50 p-4 rounded-lg">
+                    <h3 className="font-medium text-primary-800 mb-2">What's Included:</h3>
+                    <ul className="text-sm text-primary-700 space-y-1">
+                      <li>• Custom design consultation</li>
+                      <li>• Premium quality materials</li>
+                      <li>• Professional printing</li>
+                      <li>• Fast turnaround time</li>
+                    </ul>
+                  </div>
+                </div>
                 
                 <div className="space-y-3">
-                  {user ? (
-                    <Link
-                      href="/checkout"
-                      className="w-full btn-primary text-center block"
-                    >
-                      Proceed to Checkout
-                    </Link>
-                  ) : (
-                    <div className="space-y-2">
-                      <Link
-                        href="/auth/login?redirect=/checkout"
-                        className="w-full btn-primary text-center block"
-                      >
-                        Sign In to Checkout
-                      </Link>
-                      <p className="text-xs text-gray-500 text-center">
-                        Or <Link href="/auth/register" className="text-primary-600 hover:text-primary-700">create an account</Link>
-                      </p>
-                    </div>
-                  )}
-                  
+                  <button
+                    onClick={() => {
+                      const message = `Hi! I'd like to get a quote for the following items:\n\n${cartItems.map(item => `• ${item.name} (Qty: ${item.quantity})`).join('\n')}\n\nPlease provide pricing and delivery details.`
+                      window.open(`https://wa.me/917666247666?text=${encodeURIComponent(message)}`, '_blank')
+                    }}
+                    className="w-full bg-primary-500 hover:bg-primary-600 text-white py-3 px-4 rounded-lg font-semibold transition-colors"
+                  >
+                    Get Quote on WhatsApp
+                  </button>
+
                   <Link
-                    href="/"
+                    href="/categories/all"
                     className="w-full btn-secondary text-center block"
                   >
                     Continue Shopping

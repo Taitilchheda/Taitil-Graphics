@@ -249,6 +249,46 @@ class MockDatabase {
     return this.orders.filter(order => order.userId === userId)
   }
 
+  // Chat methods
+  async createConversation(conversationData: Omit<Conversation, 'id' | 'createdAt' | 'updatedAt'>): Promise<Conversation> {
+    const conversation: Conversation = {
+      ...conversationData,
+      id: this.generateId(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+    this.conversations.push(conversation)
+    return conversation
+  }
+
+  async getConversationsByUserId(userId: string): Promise<Conversation[]> {
+    return this.conversations.filter(conv => conv.userId === userId)
+  }
+
+  async createChatMessage(messageData: Omit<ChatMessage, 'id' | 'createdAt' | 'updatedAt'>): Promise<ChatMessage> {
+    const message: ChatMessage = {
+      ...messageData,
+      id: this.generateId(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+    this.chatMessages.push(message)
+    return message
+  }
+
+  async getChatMessagesByConversationId(conversationId: string): Promise<ChatMessage[]> {
+    return this.chatMessages.filter(msg => msg.conversationId === conversationId)
+  }
+
+  async markMessagesAsRead(conversationId: string, messageIds?: string[]): Promise<void> {
+    this.chatMessages = this.chatMessages.map(msg => {
+      if (msg.conversationId === conversationId && (!messageIds || messageIds.includes(msg.id))) {
+        return { ...msg, isRead: true }
+      }
+      return msg
+    })
+  }
+
   // Enquiry methods
   async createEnquiry(enquiryData: Omit<Enquiry, 'id' | 'createdAt' | 'updatedAt'>): Promise<Enquiry> {
     const enquiry: Enquiry = {
@@ -259,6 +299,14 @@ class MockDatabase {
     }
     this.enquiries.push(enquiry)
     return enquiry
+  }
+
+  async getEnquiries(filters?: any): Promise<Enquiry[]> {
+    return this.enquiries
+  }
+
+  async getActiveConversations(): Promise<Conversation[]> {
+    return this.conversations.filter(conv => conv.status === 'open')
   }
 
   // Utility methods

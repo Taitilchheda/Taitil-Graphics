@@ -5,7 +5,7 @@ import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import SearchResults from '@/components/search/SearchResults'
 import { useAuth } from '@/components/providers/AuthProvider'
-import ChatWidget from '@/components/chat/ChatWidget'
+// import ChatWidget from '@/components/chat/ChatWidget'
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
@@ -23,7 +23,7 @@ export default function SearchPage() {
       <Footer />
 
       {/* Chat widget - only show for logged in users */}
-      {user && <ChatWidget />}
+      {/* {user && <ChatWidget />} */}
     </div>
   )
 }

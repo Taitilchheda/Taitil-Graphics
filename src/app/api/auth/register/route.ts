@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user already exists
     const existingUser = users.find(u => u.email === email)
-    
+
     if (existingUser) {
       return NextResponse.json(
         { error: 'User already exists' },
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     // Return user data (excluding password)
     const { password: _, ...userWithoutPassword } = newUser
-    
+
     return NextResponse.json({
       user: userWithoutPassword,
       message: 'Registration successful'

@@ -1,138 +1,90 @@
 'use client'
 
-import { useState } from 'react'
 import { useParams } from 'next/navigation'
-import { useAuth } from '@/components/providers/AuthProvider'
+import { useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
-import ChatWidget from '@/components/chat/ChatWidget'
-import { MessageCircle, Phone, Star, ArrowLeft } from 'lucide-react'
-import Link from 'next/link'
-import Image from 'next/image'
-
-// Mock product data
-const getProductData = (id: string) => {
-  const products: Record<string, any> = {
-    '1': {
-      id: '1',
-      name: 'Standard Visiting Cards',
-      description: 'Professional business cards with premium quality printing. Perfect for networking and making a lasting first impression. Our standard visiting cards are printed on high-quality paper with crisp, clear text and vibrant colors.',
-      longDescription: `Our Standard Visiting Cards are the perfect choice for professionals who want to make a great first impression. These cards are printed on premium 300gsm paper with a smooth matte finish that feels substantial in hand.
-
-Key Features:
-• Premium 300gsm paper stock
-• High-resolution printing for crisp text and images
-• Standard size: 3.5" x 2" (89mm x 51mm)
-• Multiple design templates available
-• Fast turnaround time
-• Professional matte finish
-
-Perfect for:
-• Business professionals
-• Entrepreneurs
-• Sales representatives
-• Consultants
-• Anyone looking to network professionally
-
-Our design team can help you create the perfect card that represents your brand and personality. We offer various customization options including different fonts, colors, and layouts to ensure your card stands out.`,
-      images: [
-        'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=600&h=400&fit=crop',
-        'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=600&h=400&fit=crop',
-        'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=600&h=400&fit=crop',
-        'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=600&h=400&fit=crop'
-      ],
-      category: 'Visiting Cards',
-      features: ['Premium Paper', 'Multiple Designs', 'Fast Delivery', 'Professional Finish'],
-      specifications: {
-        'Paper Weight': '300gsm',
-        'Size': '3.5" x 2" (89mm x 51mm)',
-        'Finish': 'Matte',
-        'Printing': 'Full Color (CMYK)',
-        'Turnaround': '3-5 business days'
-      }
-    },
-    '2': {
-      id: '2',
-      name: 'Premium Visiting Cards',
-      description: 'Luxury business cards with special finishes including spot UV, foil stamping, and premium paper options. Make an unforgettable impression with our premium collection.',
-      longDescription: `Elevate your professional image with our Premium Visiting Cards. These luxury cards feature special finishes and premium materials that set you apart from the competition.
-
-Premium Features:
-• 400gsm premium paper stock
-• Spot UV coating for selective shine
-• Foil stamping options (gold, silver, copper)
-• Embossed or debossed textures
-• Premium finishes (matte, gloss, silk)
-• Rounded corners available
-• Luxury packaging included
-
-Special Finishes Available:
-• Spot UV - Adds a glossy coating to specific areas
-• Foil Stamping - Metallic accents for logos and text
-• Embossing - Raised elements for texture
-• Debossing - Recessed elements for subtle elegance
-• Soft-touch coating - Velvet-like feel
-
-These cards are perfect for executives, luxury brands, and professionals who want to make a statement. Each card is carefully crafted to ensure the highest quality and attention to detail.`,
-      images: [
-        'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=600&h=400&fit=crop',
-        'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=600&h=400&fit=crop',
-        'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=600&h=400&fit=crop',
-        'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=600&h=400&fit=crop'
-      ],
-      category: 'Visiting Cards',
-      features: ['Spot UV', 'Foil Stamping', 'Thick Paper', 'Luxury Finish'],
-      specifications: {
-        'Paper Weight': '400gsm',
-        'Size': '3.5" x 2" (89mm x 51mm)',
-        'Finish': 'Multiple options available',
-        'Special Features': 'Spot UV, Foil, Embossing',
-        'Turnaround': '5-7 business days'
-      }
-    }
-  }
-
-  return products[id] || {
-    id,
-    name: 'Product Not Found',
-    description: 'The requested product could not be found.',
-    longDescription: 'Please check the product ID and try again.',
-    images: ['https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=600&h=400&fit=crop'],
-    category: 'Unknown',
-    features: [],
-    specifications: {}
-  }
-}
+import { useCart } from '@/components/providers/CartProvider'
+import { getProductById } from '@/data/products'
+import { MessageCircle, ArrowLeft, Heart, ShoppingCart, Check, Star } from 'lucide-react'
 
 export default function ProductPage() {
-  const { user } = useAuth()
   const params = useParams()
+  const { addToCart, toggleLike, isLiked } = useCart()
+
   const productId = params.id as string
-  const product = getProductData(productId)
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const product = getProductById(productId)
 
   const handleWhatsAppEnquiry = () => {
-    const message = `Hi! I'm interested in ${product.name}. Could you please provide more information about pricing, customization options, and delivery time?`
-    const phoneNumber = '+918878380308'
-    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
+    if (!product) return
+
+    const message = product.whatsappMessage || `Hi! I'm interested in ${product.name}. Could you please provide more details about customization options?`
+    const whatsappUrl = `https://wa.me/917666247666?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
   }
 
-  const handleCallEnquiry = () => {
-    window.open('tel:+918878380308', '_self')
+  const handleAddToCart = () => {
+    if (!product) return
+
+    const productForCart = {
+      id: product.id,
+      name: product.name,
+      image: product.image,
+      category: product.category,
+      description: product.description
+    }
+
+    addToCart(productForCart, 1)
+  }
+
+  const handleToggleLike = () => {
+    if (!product) return
+
+    const productForLike = {
+      id: product.id,
+      name: product.name,
+      image: product.image,
+      category: product.category,
+      description: product.description
+    }
+
+    toggleLike(productForLike)
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h1>
+            <p className="text-gray-600 mb-8">The product you're looking for doesn't exist.</p>
+            <Link
+              href="/categories/all"
+              className="bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+            >
+              Browse All Products
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Header />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <nav className="mb-6">
           <ol className="flex items-center space-x-2 text-sm">
-            <li><Link href="/" className="text-gray-500 hover:text-teal-600">Home</Link></li>
+            <li><Link href="/" className="text-gray-500 hover:text-primary-600">Home</Link></li>
             <li className="text-gray-400">/</li>
-            <li><Link href="/categories/visiting-cards" className="text-gray-500 hover:text-teal-600">{product.category}</Link></li>
+            <li><Link href={`/categories/${product.category}`} className="text-gray-500 hover:text-primary-600">{product.category}</Link></li>
             <li className="text-gray-400">/</li>
             <li className="text-gray-900 font-medium">{product.name}</li>
           </ol>
@@ -141,147 +93,131 @@ export default function ProductPage() {
         {/* Back Button */}
         <div className="mb-6">
           <Link
-            href="/categories/visiting-cards"
-            className="inline-flex items-center space-x-2 text-teal-600 hover:text-teal-700 transition-colors"
+            href={`/categories/${product.category}`}
+            className="inline-flex items-center space-x-2 text-primary-600 hover:text-primary-700"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to Products</span>
+            <span>Back to {product.category}</span>
           </Link>
         </div>
 
+        {/* Product Details - Vistaprint Style */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Product Images */}
+          {/* Left Side - Product Images */}
           <div className="space-y-4">
-            {/* Main Image */}
-            <div className="aspect-[4/3] bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200">
+            <div className="aspect-square bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200">
               <Image
-                src={product.images[selectedImageIndex]}
+                src={product.image}
                 alt={product.name}
                 width={600}
-                height={400}
+                height={600}
                 className="w-full h-full object-cover"
               />
             </div>
-            
-            {/* Thumbnail Images */}
-            <div className="grid grid-cols-4 gap-3">
-              {product.images.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImageIndex(index)}
-                  className={`aspect-square bg-white rounded-lg overflow-hidden border-2 transition-all ${
-                    selectedImageIndex === index 
-                      ? 'border-teal-500 ring-2 ring-teal-200' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
+
+            {/* Additional product images */}
+            <div className="grid grid-cols-4 gap-2">
+              {[1, 2, 3, 4].map((index) => (
+                <div key={index} className="aspect-square bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
                   <Image
-                    src={image}
-                    alt={`${product.name} ${index + 1}`}
-                    width={150}
-                    height={150}
-                    className="w-full h-full object-cover"
+                    src={product.image}
+                    alt={`${product.name} view ${index}`}
+                    width={100}
+                    height={100}
+                    className="w-full h-full object-cover opacity-50"
                   />
-                </button>
+                </div>
               ))}
             </div>
           </div>
 
-          {/* Product Information */}
-          <div className="space-y-8">
-            {/* Product Header */}
+          {/* Right Side - Product Details */}
+          <div className="space-y-6">
             <div>
-              <div className="flex items-center space-x-2 mb-2">
-                <span className="bg-teal-100 text-teal-800 text-sm px-3 py-1 rounded-full">
-                  {product.category}
-                </span>
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
-              <p className="text-lg text-gray-600 leading-relaxed">{product.description}</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
+              <p className="text-lg text-gray-600">{product.description}</p>
             </div>
+
+            {/* Rating */}
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star key={star} className="w-5 h-5 text-yellow-400 fill-current" />
+                ))}
+              </div>
+              <span className="text-sm text-gray-600">(4.8 out of 5 stars)</span>
+            </div>
+
+
 
             {/* Features */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Key Features</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <ul className="space-y-2">
                 {product.features.map((feature, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-teal-500 rounded-full"></div>
+                  <li key={index} className="flex items-center space-x-3">
+                    <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
                     <span className="text-gray-700">{feature}</span>
-                  </div>
+                  </li>
                 ))}
+              </ul>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-4 pt-6">
+              <button
+                onClick={handleWhatsAppEnquiry}
+                className="w-full bg-primary-500 hover:bg-primary-600 text-white py-4 px-6 rounded-lg font-semibold text-lg flex items-center justify-center space-x-2 transition-colors"
+              >
+                <MessageCircle className="w-6 h-6" />
+                <span>Get Quote on WhatsApp</span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={handleAddToCart}
+                  className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-900 py-3 px-4 rounded-lg font-medium transition-colors"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  <span>Add to Cart</span>
+                </button>
+
+                <button
+                  onClick={handleToggleLike}
+                  className={`flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-colors ${
+                    isLiked(product.id)
+                      ? 'bg-pink-100 text-pink-700 hover:bg-pink-200'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+                  }`}
+                >
+                  <Heart className={`w-5 h-5 ${isLiked(product.id) ? 'fill-current' : ''}`} />
+                  <span>{isLiked(product.id) ? 'Liked' : 'Like'}</span>
+                </button>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button
-                  onClick={handleWhatsAppEnquiry}
-                  className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white py-4 px-6 rounded-xl font-semibold transition-colors duration-200"
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  <span>WhatsApp Enquiry</span>
-                </button>
-                
-                <button
-                  onClick={handleCallEnquiry}
-                  className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white py-4 px-6 rounded-xl font-semibold transition-colors duration-200"
-                >
-                  <Phone className="w-5 h-5" />
-                  <span>Call Now</span>
-                </button>
-              </div>
-              
-              <p className="text-sm text-gray-600 text-center">
-                Get instant quotes and personalized assistance from our experts
+            {/* Contact Info */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-2">Need Help?</h4>
+              <p className="text-sm text-gray-600 mb-3">
+                Our design experts are here to help you create the perfect product for your needs.
               </p>
-            </div>
-
-            {/* Contact Information */}
-            <div className="bg-teal-50 rounded-xl p-6">
-              <h3 className="font-semibold text-gray-900 mb-3">Need Help?</h3>
-              <div className="space-y-2 text-sm">
-                <p className="text-gray-700">📞 Call us: <span className="font-medium">8878380308</span></p>
-                <p className="text-gray-700">📧 Email: support@taitilgraphics.com</p>
-                <p className="text-gray-700">⏰ Mon-Sat: 9:00 AM - 7:00 PM</p>
+              <div className="flex flex-col space-y-2 text-sm">
+                <div className="flex items-center space-x-2">
+                  <MessageCircle className="w-4 h-4 text-primary-600" />
+                  <span>WhatsApp: +91 7666247666</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="w-4 h-4 text-primary-600">📧</span>
+                  <span>Email: taitilgraphics@gmail.com</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Detailed Description */}
-        <div className="mt-16">
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Product Details</h2>
-            <div className="prose prose-gray max-w-none">
-              <div className="whitespace-pre-line text-gray-700 leading-relaxed">
-                {product.longDescription}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Specifications */}
-        {Object.keys(product.specifications).length > 0 && (
-          <div className="mt-8">
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Specifications</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Object.entries(product.specifications).map(([key, value]) => (
-                  <div key={key} className="flex justify-between py-3 border-b border-gray-200 last:border-b-0">
-                    <span className="font-medium text-gray-900">{key}:</span>
-                    <span className="text-gray-700">{value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </main>
 
       <Footer />
-      {user && <ChatWidget />}
     </div>
   )
 }

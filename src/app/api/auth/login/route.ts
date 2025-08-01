@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     // Find user by email
     const user = users.find(u => u.email === email)
-    
+
     if (!user || user.password !== password) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Return user data (excluding password)
     const { password: _, ...userWithoutPassword } = user
-    
+
     return NextResponse.json({
       user: userWithoutPassword,
       message: 'Login successful'

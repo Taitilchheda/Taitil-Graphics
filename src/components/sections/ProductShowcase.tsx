@@ -19,7 +19,7 @@ export default function ProductShowcase({ category = 'visiting-cards' }: Product
   }
 
   const handleCallEnquiry = () => {
-    window.open('tel:+918878380308', '_self')
+    window.open('tel:+917666247666', '_self')
   }
 
   // Mock product images

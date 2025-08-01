@@ -2,14 +2,15 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/components/providers/AuthProvider'
-import { CartProvider } from '@/components/cart/CartProvider'
-import CartSidebar from '@/components/cart/CartSidebar'
+import { CartProvider } from '@/components/providers/CartProvider'
+import { Toaster } from 'react-hot-toast'
+import ChatbotButton from '@/components/ui/ChatbotButton'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Business Services Platform',
-  description: 'Your one-stop solution for business essentials, office supplies, design services, and more.',
+  title: 'Taitil Graphics - Professional Printing & Design Services',
+  description: 'Your one-stop solution for visiting cards, wedding invitations, marketing materials, packaging, and custom design services.',
 }
 
 export default function RootLayout({
@@ -23,7 +24,27 @@ export default function RootLayout({
         <AuthProvider>
           <CartProvider>
             {children}
-            <CartSidebar />
+            <ChatbotButton />
+            <Toaster
+              position="bottom-left"
+              toastOptions={{
+                duration: 3000,
+                style: {
+                  background: '#363636',
+                  color: '#fff',
+                },
+                success: {
+                  style: {
+                    background: '#167450',
+                  },
+                },
+                error: {
+                  style: {
+                    background: '#ef4444',
+                  },
+                },
+              }}
+            />
           </CartProvider>
         </AuthProvider>
       </body>

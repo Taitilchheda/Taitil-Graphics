@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/components/providers/AuthProvider'
 import Header from '@/components/layout/Header'
-import { FolderOpen, Plus, Calendar, User } from 'lucide-react'
+import { FolderOpen, Plus, Calendar, User, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 
 const mockProjects = [

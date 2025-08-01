@@ -178,7 +178,7 @@ export default function Footer() {
               {/* WhatsApp Button */}
               <button
                 onClick={handleWhatsAppClick}
-                className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg transition-colors duration-200 w-full justify-center"
+                className="flex items-center space-x-2 bg-primary-500 hover:bg-primary-600 text-white py-3 px-4 rounded-lg transition-colors duration-200 w-full justify-center"
               >
                 <MessageCircle className="w-5 h-5" />
                 <span>Chat on WhatsApp</span>
@@ -219,7 +219,7 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-wrap justify-center items-center space-x-8 text-sm text-gray-400">
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <div className="w-2 h-2 bg-primary-400 rounded-full"></div>
               <span>Secure Payments</span>
             </div>
             <div className="flex items-center space-x-2">
