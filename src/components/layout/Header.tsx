@@ -53,17 +53,17 @@ export default function Header() {
   return (
     <>
       {/* Main Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+      <header className="bg-white shadow-sm sticky top-0 z-50 ">
+        <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-4">
+          <div className="flex items-center justify-between h-28">
             {/* Logo */}
             <Link href="/" className="flex items-center">
               <Image
                 src="/logo.svg"
                 alt="Taitil Graphics"
-                width={140}
-                height={45}
-                className="h-12 w-auto"
+                width={180}
+                height={60}
+                className="h-24 w-auto"
               />
             </Link>
 
@@ -183,7 +183,7 @@ export default function Header() {
       </header>
 
       {/* Category Navigation */}
-      <nav className="bg-white border-b border-gray-200">
+      <nav className="bg-[#ffe6cc] border-b border-[#ffe6cc]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center space-x-8 h-12">
             {/* View All */}

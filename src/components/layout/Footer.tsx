@@ -8,13 +8,13 @@ export default function Footer() {
 
   const handleWhatsAppClick = () => {
     const message = "Hi! I'd like to know more about your printing services."
-    const phoneNumber = '+918878380308'
+    const phoneNumber = '+917666247666'
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
   }
 
   return (
-    <footer className="bg-gray-900 text-white">
+    <footer className="bg-[#505050] text-white">
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -22,9 +22,8 @@ export default function Footer() {
           <div className="space-y-6">
             <div>
               <div className="text-2xl font-bold mb-4">
-                <span className="text-teal-400">Taitil</span>
-                <span className="text-orange-400 text-sm ml-1">Graphics</span>
-              </div>
+            <img src="/logo white.svg" alt="Taitil Graphics Logo" className="h-20" />
+          </div>
               <p className="text-gray-300 leading-relaxed">
                 Your trusted partner for professional printing solutions. We provide high-quality 
                 designing and printing services for businesses of all sizes.
@@ -133,8 +132,8 @@ export default function Footer() {
                 <Phone className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-gray-300">
-                    <a href="tel:+918878380308" className="hover:text-teal-400 transition-colors">
-                      +91 8878380308
+                    <a href="tel:+917666247666" className="hover:text-teal-400 transition-colors">
+                      +91 7666 24 7666
                     </a>
                   </p>
                   <p className="text-sm text-gray-400">Call for instant support</p>
@@ -145,8 +144,8 @@ export default function Footer() {
                 <Mail className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-gray-300">
-                    <a href="mailto:support@taitilgraphics.com" className="hover:text-teal-400 transition-colors">
-                      support@taitilgraphics.com
+                    <a href="mailto:taitilgraphics@gmail.com" className="hover:text-teal-400 transition-colors">
+                      taitilgraphics@gmail.com
                     </a>
                   </p>
                   <p className="text-sm text-gray-400">Email us your queries</p>
@@ -157,8 +156,12 @@ export default function Footer() {
                 <MapPin className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-gray-300">
-                    123 Business District<br />
-                    Mumbai, Maharashtra 400001
+                    B 403, Saraswati apartment,<br />
+                    C S complex road no 4, <br />
+                    Behind Shakti Nagar<br />
+                    Dahisar East
+                    Mumbai 400068
+                    Mumbai, Maharashtra
                   </p>
                   <p className="text-sm text-gray-400">Visit our office</p>
                 </div>
@@ -168,8 +171,7 @@ export default function Footer() {
                 <Clock className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-gray-300">
-                    Mon - Sat: 9:00 AM - 7:00 PM<br />
-                    Sunday: Closed
+                    Mon - Sun: 10:00 AM - 7:00 PM<br />
                   </p>
                   <p className="text-sm text-gray-400">Business hours</p>
                 </div>

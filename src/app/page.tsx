@@ -31,17 +31,18 @@ export default function HomePage() {
 
       <main>
         {/* Hero Section */}
-        <section className="bg-gradient-to-r from-primary-500 to-primary-600 text-white">
+        <section className="bg-gradient-to-r from-primary-200 to-primary-200 text-gray-500">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
                 <h1 className="text-4xl md:text-5xl font-bold mb-6">
                   Professional Printing
-                  <span className="block text-primary-200">Made Simple</span>
+                  <span className="block text-primary-600">Made Simple</span>
                 </h1>
                 <p className="text-xl mb-8 opacity-90">
                   From business cards to marketing materials, we deliver high-quality printing solutions
                   that make your brand stand out. Fast, reliable, and affordable.
+                  You think it we make it!
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
@@ -52,7 +53,7 @@ export default function HomePage() {
                   </Link>
                   <Link
                     href="/categories/all"
-                    className="border-2 border-white text-white hover:bg-white hover:text-primary-600 px-8 py-3 rounded-lg font-semibold transition-colors"
+                    className="border-2 border-primary-600 text-primary-600 hover:bg-white hover:text-primary-600 px-8 py-3 rounded-lg font-semibold transition-colors"
                   >
                     Browse All Products
                   </Link>
@@ -60,11 +61,7 @@ export default function HomePage() {
               </div>
               <div className="relative">
                 <Image
-                  src="https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=600&h=400&fit=crop"
-                  alt="Professional Printing Services"
-                  width={600}
-                  height={400}
-                  className="rounded-lg shadow-xl"
+                  src="/images/sweets box mockup 2.jpg" alt="Image description" width = {600} height = {400} className="rounded-lg shadow-xl"
                 />
               </div>
             </div>
