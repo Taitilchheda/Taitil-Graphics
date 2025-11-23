@@ -8,6 +8,8 @@ interface User {
   name: string
   password?: string
   role?: 'customer' | 'admin'
+  phone?: string
+  address?: string
 }
 
 interface AuthContextType {
@@ -15,6 +17,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>
   register: (email: string, password: string, name: string) => Promise<boolean>
   logout: () => void
+  updateUser: (data: Partial<User>) => void
   isLoading: boolean
 }
 
@@ -146,8 +149,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user')
   }
 
+  const updateUser = (data: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev
+      const next: User = { ...prev, ...data }
+      localStorage.setItem('user', JSON.stringify(next))
+      // Keep local DB in sync for retailer accounts
+      const updatedDb = userDb.map((u) => (u.id === prev.id ? { ...u, ...data } : u))
+      persistDb(updatedDb)
+      return next
+    })
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

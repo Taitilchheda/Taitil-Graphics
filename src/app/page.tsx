@@ -63,11 +63,11 @@ export default function HomePage() {
                 <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
                   Professional Printing &{' '}
                   <span className="text-primary-700">Celebration Decor</span>
-                  <span className="block text-2xl text-gray-600 mt-3">Built like a modern Amazon-style catalog</span>
+                  <span className="block text-2xl text-gray-600 mt-3">You think it  We make it.</span>
                 </h1>
                 <p className="text-lg mb-8 text-gray-700">
-                  Studio-grade visiting cards, packaging, marketing kits, and now cake toppers and décor—curated,
-                  categorized, and ready to order fast. You think it, we make it.
+                  Studio-grade visiting cards, packaging, marketing kits, and now cake toppers and decor curated,
+                  categorized, and ready to order fast.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
@@ -82,7 +82,7 @@ export default function HomePage() {
                     onClick={() => handleCategoryClick('cake-decorations')}
                     className="border-2 border-primary-600 text-primary-700 hover:bg-white hover:text-primary-700 px-8 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center"
                   >
-                    Cake Décor Picks
+                    Cake Decor Picks
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Link>
                 </div>
@@ -125,7 +125,7 @@ export default function HomePage() {
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">Shop by Category</h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                Explore professional printing, packaging, and celebration decor—grouped just like an enterprise storefront.
+                Explore professional printing, packaging, and celebration decor grouped just like an enterprise storefront.
               </p>
             </div>
 
@@ -212,7 +212,7 @@ export default function HomePage() {
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">Recommended Products</h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                Curated picks your customers love—fast-moving print staples and décor heroes.
+                Curated picks our customers love fast moving print staples and decor heroes.
               </p>
             </div>
 
@@ -256,7 +256,7 @@ export default function HomePage() {
                   <Flame className="w-6 h-6 text-orange-500 mr-2" />
                   Hot Sellers
                 </h2>
-                <p className="text-gray-600">High-volume SKUs we keep ready: toppers, balloons, business essentials.</p>
+                <p className="text-gray-600">High volume SKUs we keep ready: toppers, cards, business essentials.</p>
               </div>
               <Link href="/categories/all" className="text-primary-700 font-semibold hover:text-primary-800 flex items-center">
                 Browse everything <ArrowRight className="w-4 h-4 ml-1" />

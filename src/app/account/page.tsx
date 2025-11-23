@@ -1,20 +1,31 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/components/providers/AuthProvider'
 import Header from '@/components/layout/Header'
 import { User, Mail, Phone, MapPin, Edit, Save } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
 
 export default function AccountPage() {
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    phone: '',
-    address: ''
+    phone: user?.phone || '',
+    address: user?.address || ''
   })
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        address: user.address || ''
+      })
+    }
+  }, [user])
 
   if (!user) {
     return (
@@ -34,8 +45,7 @@ export default function AccountPage() {
   }
 
   const handleSave = () => {
-    // In a real app, save to backend
-    console.log('Saving user data:', formData)
+    updateUser(formData)
     setIsEditing(false)
   }
 
@@ -98,13 +108,13 @@ export default function AccountPage() {
                     <input
                       type="email"
                       name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className="input-field pl-10 disabled:bg-gray-50"
-                    />
-                  </div>
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className="input-field pl-10 disabled:bg-gray-50"
+                  />
                 </div>
+              </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import ProductCard from '@/components/ui/ProductCard'
 import Link from 'next/link'
-import { Search, Filter, Grid, List, ArrowRight } from 'lucide-react'
+import { Search, Filter } from 'lucide-react'
 import { useCatalog } from '@/components/providers/CatalogProvider'
 import { useAnalytics } from '@/components/providers/AnalyticsProvider'
 
@@ -14,26 +14,31 @@ export default function AllProductsPage() {
   const { logEvent } = useAnalytics()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [sortBy, setSortBy] = useState('popular')
 
   useEffect(() => {
     logEvent({ type: 'view', label: 'all-products' })
   }, [logEvent])
 
-  const productsWithMeta = allProducts.map((product) => {
-    const category = categories.find((cat) => cat.id === product.category)
-    const subcategory = category?.subcategories.find((sub) => sub.id === product.subcategory)
-    return {
-      ...product,
-      categoryName: category?.name || product.category,
-      subcategoryName: subcategory?.name || product.subcategory,
-      rating: (product as any).rating || 4.8,
-      reviews: (product as any).reviews || Math.floor(Math.random() * 200) + 50,
-      isPopular: product.isRecommended,
-      isBestSeller: product.isHotSeller,
-    }
-  })
+  const productsWithMeta = useMemo(
+    () =>
+      allProducts.map((product, index) => {
+        const category = categories.find((cat) => cat.id === product.category)
+        const subcategory = category?.subcategories.find((sub) => sub.id === product.subcategory)
+        const fallbackCreatedAt = product.createdAt || `2024-01-${String((index % 28) + 1).padStart(2, '0')}T00:00:00.000Z`
+        return {
+          ...product,
+          categoryName: category?.name || product.category,
+          subcategoryName: subcategory?.name || product.subcategory,
+          rating: (product as any).rating || 4.8,
+          reviews: (product as any).reviews || 120,
+          isPopular: product.isRecommended,
+          isBestSeller: product.isHotSeller,
+          createdAt: fallbackCreatedAt,
+        }
+      }),
+    [allProducts, categories]
+  )
 
   const categoryNames = ['All', ...categories.map((cat) => cat.name)]
 
@@ -46,6 +51,8 @@ export default function AllProductsPage() {
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     switch (sortBy) {
+      case 'newest':
+        return new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()
       case 'rating':
         return (b.rating || 0) - (a.rating || 0)
       case 'name':
@@ -62,23 +69,24 @@ export default function AllProductsPage() {
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">All Products</h1>
+        <div className="mb-8 space-y-2">
+          <h1 className="text-3xl font-bold text-gray-900">All Products</h1>
           <p className="text-gray-600">
             Discover our complete range of printing and design services
           </p>
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
+        <div className="bg-white rounded-xl shadow-md p-6 mb-8 space-y-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             {/* Search */}
-            <div className="flex-1 max-w-md">
+            <div className="flex-1 w-full max-w-xl">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search products..."
+                  placeholder="Search products, materials, services..."
                   value={searchQuery}
                   onChange={(e) => {
                     const value = e.target.value
@@ -87,54 +95,44 @@ export default function AllProductsPage() {
                       logEvent({ type: 'click', label: 'search', meta: { query: value } })
                     }
                   }}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-gray-50"
                 />
               </div>
             </div>
 
-            {/* Category Filter */}
-            <div className="flex flex-wrap gap-2">
+            {/* Sort */}
+            <div className="w-full lg:w-60">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full px-3 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-50"
+              >
+                <option value="popular">Most Popular</option>
+                <option value="newest">Newest</option>
+                <option value="name">Name A-Z</option>
+                <option value="rating">Highest Rated</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Categories */}
+          <div className="space-y-2">
+            <span className="text-sm font-medium text-gray-700">Categories</span>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {categoryNames.map((category) => (
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  className={`shrink-0 px-4 py-2 rounded-full font-medium text-sm border transition-colors ${
                     selectedCategory === category
-                      ? 'bg-teal-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-teal-600 text-white border-teal-600'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-teal-200'
                   }`}
                 >
                   {category}
                 </button>
               ))}
-            </div>
-
-            {/* Sort and View Options */}
-            <div className="flex items-center space-x-4">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="popular">Most Popular</option>
-                <option value="name">Name A-Z</option>
-                <option value="rating">Highest Rated</option>
-              </select>
-
-              <div className="flex border border-gray-300 rounded-lg">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 ${viewMode === 'grid' ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <Grid className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 ${viewMode === 'list' ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <List className="w-4 h-4" />
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -169,17 +167,9 @@ export default function AllProductsPage() {
             </button>
           </div>
         ) : (
-          <div className={`grid gap-6 ${
-            viewMode === 'grid' 
-              ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
-              : 'grid-cols-1'
-          }`}>
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {sortedProducts.map((product) => (
-              <ProductCard 
-                key={product.id} 
-                product={product}
-                className={viewMode === 'list' ? 'flex flex-row' : ''}
-              />
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}

@@ -48,6 +48,8 @@ const butterflyImages = [
   'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600&h=400&fit=crop',
 ]
 
+const STATIC_CREATED_AT = '2024-01-01T00:00:00.000Z'
+
 const buildCakeTopperProducts = (type: 'paper' | 'acrylic', count: number): Product[] => {
   const isPaper = type === 'paper'
   const images = isPaper ? paperTopperImages : acrylicTopperImages
@@ -71,7 +73,7 @@ const buildCakeTopperProducts = (type: 'paper' | 'acrylic', count: number): Prod
     isRecommended: idx < 8,
     isHotSeller: !isPaper && idx < 12,
     badges: isPaper ? ['Recommended'] : ['Hot Seller'],
-    createdAt: new Date().toISOString(),
+    createdAt: STATIC_CREATED_AT,
   }))
 }
 
@@ -88,7 +90,7 @@ const buildButterflyProducts = (count: number): Product[] =>
     stock: 75,
     badges: ['New listing'],
     isRecommended: idx < 10,
-    createdAt: new Date().toISOString(),
+    createdAt: STATIC_CREATED_AT,
   }))
 
 export const categories: Category[] = [
@@ -551,7 +553,7 @@ export const categories: Category[] = [
             badges: ['Recommended'],
             isRecommended: true,
             stock: 80,
-            createdAt: new Date().toISOString()
+            createdAt: STATIC_CREATED_AT
           }
         ]
       }

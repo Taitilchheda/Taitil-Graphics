@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import { useCatalog } from '@/components/providers/CatalogProvider'

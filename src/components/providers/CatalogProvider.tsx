@@ -92,12 +92,13 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [clickMap, setClickMap] = useState<Record<string, number>>({})
   const baseCreatedAt = useMemo(() => {
     const map: Record<string, string> = {}
+    const baseSeed = new Date('2024-01-01T00:00:00.000Z').getTime()
+    const dayMs = 24 * 60 * 60 * 1000
     cloneCatalog().forEach((category) =>
       category.subcategories.forEach((sub) =>
         sub.products.forEach((product, index) => {
           map[product.id] =
-            product.createdAt ||
-            new Date(Date.now() - index * 24 * 60 * 60 * 1000).toISOString()
+            product.createdAt || new Date(baseSeed - index * dayMs).toISOString()
         })
       )
     )
