@@ -30,6 +30,67 @@ export interface Subcategory {
   products: Product[]
 }
 
+const paperTopperImages = [
+  'https://images.unsplash.com/photo-1527515545081-5db817172677?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=400&fit=crop',
+]
+
+const acrylicTopperImages = [
+  'https://images.unsplash.com/photo-1486427944299-d1955d23e34d?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600&h=400&fit=crop',
+]
+
+const butterflyImages = [
+  'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600&h=400&fit=crop',
+]
+
+const buildCakeTopperProducts = (type: 'paper' | 'acrylic', count: number): Product[] => {
+  const isPaper = type === 'paper'
+  const images = isPaper ? paperTopperImages : acrylicTopperImages
+  const baseName = isPaper ? 'Premium Paper Cake Topper' : 'Luxury Acrylic Cake Topper'
+  const subcategory = isPaper ? 'premium-paper-cake-toppers' : 'luxury-acrylic-cake-toppers'
+
+  return Array.from({ length: count }).map((_, idx) => ({
+    id: `${type}-${idx + 1}`,
+    name: `${baseName} #${idx + 1}`,
+    description: isPaper
+      ? 'Ready-made layered cardstock topper with shimmer/foil finish. No customization.'
+      : 'Ready-made mirror/frosted acrylic topper. No customization.',
+    category: 'cake-decorations',
+    subcategory,
+    image: images[idx % images.length],
+    features: isPaper
+      ? ['300gsm shimmer cardstock', 'Multi-layer cut precision', 'Gold/silver foil finish', 'Custom names and ages']
+      : ['3mm mirror acrylic', 'Laser-cut precision', 'Gold/rose gold/silver finishes', 'Reusable and easy to clean'],
+    whatsappMessage: `Hi! I'm interested in ${baseName} #${idx + 1}. Ready-made (no customization). Please confirm price and availability.`,
+    stock: isPaper ? 60 : 45,
+    isRecommended: idx < 8,
+    isHotSeller: !isPaper && idx < 12,
+    badges: isPaper ? ['Recommended'] : ['Hot Seller'],
+    createdAt: new Date().toISOString(),
+  }))
+}
+
+const buildButterflyProducts = (count: number): Product[] =>
+  Array.from({ length: count }).map((_, idx) => ({
+    id: `butterfly-${idx + 1}`,
+    name: `Butterfly Accent Kit #${idx + 1}`,
+    description: 'Metallic butterflies, palm leaves, pampas, and floral picks for cakes and decor.',
+    category: 'cake-decorations',
+    subcategory: 'butterfly-decoration',
+    image: butterflyImages[idx % butterflyImages.length],
+    features: ['Metallic butterflies', 'Palm leaves + pampas', 'Floral picks', 'Food-safe picks'],
+    whatsappMessage: `Hi! I'm interested in Butterfly Accent Kit #${idx + 1}. Please share options, pricing, and lead time.`,
+    stock: 75,
+    badges: ['New listing'],
+    isRecommended: idx < 10,
+    createdAt: new Date().toISOString(),
+  }))
+
 export const categories: Category[] = [
   {
     id: 'business-essentials',
@@ -456,40 +517,22 @@ export const categories: Category[] = [
     description: 'Statement cake toppers and celebration decor for parties and events',
     subcategories: [
       {
-        id: 'cake-toppers',
-        name: 'Cake Toppers',
-        description: 'Personalized toppers to crown every celebration cake',
-        products: [
-          {
-            id: 'paper-cake-toppers',
-            name: 'Premium Paper Cake Toppers',
-            description: 'Layered cardstock toppers with foil, glitter, and custom names for birthdays and anniversaries',
-            category: 'cake-decorations',
-            subcategory: 'cake-toppers',
-            image: 'https://images.unsplash.com/photo-1527515545081-5db817172677?w=600&h=400&fit=crop',
-            features: ['300gsm shimmer cardstock', 'Multi-layer cut precision', 'Gold/silver foil finish', 'Custom names and ages'],
-            whatsappMessage: 'Hi! I want to order a custom paper cake topper. Please share design and size options.',
-            badges: ['New listing', 'Recommended'],
-            isRecommended: true,
-            isNew: true,
-            stock: 60,
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 'acrylic-cake-toppers',
-            name: 'Luxury Acrylic Cake Toppers',
-            description: 'Reusable mirror acrylic toppers with laser-cut lettering and metallic sheen',
-            category: 'cake-decorations',
-            subcategory: 'cake-toppers',
-            image: 'https://images.unsplash.com/photo-1486427944299-d1955d23e34d?w=600&h=400&fit=crop',
-            features: ['3mm mirror acrylic', 'Laser-cut precision', 'Gold/rose gold/silver finishes', 'Reusable and easy to clean'],
-            whatsappMessage: 'Hi! I am looking for acrylic cake toppers. Can you share colors, fonts, and delivery time?',
-            badges: ['Hot Seller'],
-            isHotSeller: true,
-            stock: 45,
-            createdAt: new Date().toISOString()
-          }
-        ]
+        id: 'premium-paper-cake-toppers',
+        name: 'Premium Paper Cake Toppers',
+        description: '100+ ready-made layered cardstock toppers with foil/glitter finish. No customization.',
+        products: buildCakeTopperProducts('paper', 100)
+      },
+      {
+        id: 'luxury-acrylic-cake-toppers',
+        name: 'Luxury Acrylic Cake Toppers',
+        description: '200+ ready-made mirror/frosted acrylic toppers in premium finishes. No customization.',
+        products: buildCakeTopperProducts('acrylic', 200)
+      },
+      {
+        id: 'butterfly-decoration',
+        name: 'Butterfly & Leaf Picks',
+        description: 'Colorful butterfly accent kits to pair with toppers and celebration decor.',
+        products: buildButterflyProducts(50)
       },
       {
         id: 'party-decor',
@@ -508,20 +551,6 @@ export const categories: Category[] = [
             badges: ['Recommended'],
             isRecommended: true,
             stock: 80,
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 'butterfly-leaf-picks',
-            name: 'Butterfly & Leaf Picks',
-            description: 'Metallic butterflies, palm leaves, and florals to accent cakes and dessert tables',
-            category: 'cake-decorations',
-            subcategory: 'party-decor',
-            image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&h=400&fit=crop',
-            features: ['Foil butterflies', 'Palm leaves & pampas', 'Food-safe picks', 'Mix-and-match kits'],
-            whatsappMessage: 'Hi! I want butterfly/leaf decorations for my cake. Please share available colors and bundles.',
-            badges: ['Trending'],
-            isHotSeller: true,
-            stock: 70,
             createdAt: new Date().toISOString()
           }
         ]

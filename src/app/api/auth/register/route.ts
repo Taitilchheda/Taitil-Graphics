@@ -1,27 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-// Mock user database - in production, use a real database
-let users = [
-  {
-    id: '1',
-    email: 'customer@example.com',
-    password: 'password123',
-    name: 'John Customer'
-  },
-  {
-    id: '2',
-    email: 'admin@example.com',
-    password: 'admin123',
-    name: 'Admin User'
-  }
-]
+import { addUser, findUserByEmail } from '@/lib/auth/mockUsers'
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password, name } = await request.json()
 
     // Check if user already exists
-    const existingUser = users.find(u => u.email === email)
+    const existingUser = findUserByEmail(email)
 
     if (existingUser) {
       return NextResponse.json(
@@ -30,15 +15,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create new user
-    const newUser = {
-      id: (users.length + 1).toString(),
+    // Create new user in shared mock store
+    const newUser = addUser({
       email,
       password, // In production, hash this password
       name
-    }
+    })
 
-    users.push(newUser)
+    if (!newUser) {
+      return NextResponse.json(
+        { error: 'User already exists' },
+        { status: 400 }
+      )
+    }
 
     // Return user data (excluding password)
     const { password: _, ...userWithoutPassword } = newUser

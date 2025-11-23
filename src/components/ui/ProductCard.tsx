@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { useCart } from '@/components/providers/CartProvider'
 import { useAnalytics } from '@/components/providers/AnalyticsProvider'
 import { useCatalog } from '@/components/providers/CatalogProvider'
@@ -15,6 +14,7 @@ interface Product {
   image: string
   category: string
   description: string
+  price?: string
   rating?: number
   reviews?: number
   isPopular?: boolean
@@ -23,6 +23,7 @@ interface Product {
   isRecommended?: boolean
   isNew?: boolean
   badges?: string[]
+  features?: string[]
 }
 
 interface ProductCardProps {
@@ -35,7 +36,6 @@ export default function ProductCard({ product, showQuickAdd = true, className = 
   const { addToCart, toggleLike, isLiked } = useCart()
   const { logEvent } = useAnalytics()
   const { updateInventory } = useCatalog()
-  const [isHovered, setIsHovered] = useState(false)
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -61,8 +61,6 @@ export default function ProductCard({ product, showQuickAdd = true, className = 
   return (
     <div
       className={`bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 ${className}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Product Image */}
       <div className="relative overflow-hidden">
@@ -76,35 +74,6 @@ export default function ProductCard({ product, showQuickAdd = true, className = 
           />
         </Link>
         
-        {/* Badges */}
-        <div className="absolute top-3 left-3 flex flex-col space-y-2">
-          {product.badges?.map((badge) => (
-            <span key={badge} className="bg-gray-900/80 text-white px-2 py-1 rounded-full text-xs font-semibold">
-              {badge}
-            </span>
-          ))}
-          {product.isBestSeller && !product.badges?.length && (
-            <span className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-              Best Seller
-            </span>
-          )}
-          {product.isHotSeller && !product.isBestSeller && (
-            <span className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-              Hot Seller
-            </span>
-          )}
-          {product.isPopular && !product.isBestSeller && !product.isHotSeller && (
-            <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-              Popular
-            </span>
-          )}
-          {product.isRecommended && (
-            <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
-              Recommended
-            </span>
-          )}
-        </div>
-
         {/* Like Button */}
         <button
           onClick={handleToggleLike}
@@ -117,18 +86,6 @@ export default function ProductCard({ product, showQuickAdd = true, className = 
           <Heart className={`w-5 h-5 ${isLiked(product.id) ? 'fill-current' : ''}`} />
         </button>
 
-        {/* Quick Add to Cart (appears on hover) */}
-        {showQuickAdd && isHovered && (
-          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-            <button
-              onClick={handleAddToCart}
-              className="bg-white text-gray-900 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors flex items-center space-x-2"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span>Quick Add</span>
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Product Info */}

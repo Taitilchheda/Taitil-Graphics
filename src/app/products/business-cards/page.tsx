@@ -1,7 +1,7 @@
 'use client'
 
 import Header from '@/components/layout/Header'
-import ProductCard from '@/components/products/ProductCard'
+import ProductCard from '@/components/ui/ProductCard'
 import { useAuth } from '@/components/providers/AuthProvider'
 import ChatWidget from '@/components/chat/ChatWidget'
 

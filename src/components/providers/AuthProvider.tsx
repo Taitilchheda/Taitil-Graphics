@@ -6,6 +6,7 @@ interface User {
   id: string
   email: string
   name: string
+  password?: string
   role?: 'customer' | 'admin'
 }
 
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Local retailer DB first (offline friendly)
-      const found = userDb.find((u) => u.email === email && (u as any).password === password)
+      const found = userDb.find((u) => u.email === email && u.password === password)
       if (found) {
         setUser(found)
         localStorage.setItem('user', JSON.stringify(found))
@@ -78,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userData = await response.json()
         const signedIn: User = { ...userData.user, role: userData.user.role || 'customer' }
         // Cache credentials locally for recurring users
-        const cachedUser: User = { ...signedIn, ...(password ? { password } : {}) } as any
+        const cachedUser: User = { ...signedIn, ...(password ? { password } : {}) }
         persistDb([...userDb.filter((u) => u.email !== email), cachedUser])
         setUser(cachedUser)
         localStorage.setItem('user', JSON.stringify(cachedUser))
@@ -110,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (response.ok) {
           const userData = await response.json()
-          registeredUser = { ...userData.user, role: userData.user.role || 'customer' }
+          registeredUser = { ...userData.user, role: userData.user.role || 'customer', password }
         }
       } catch (apiErr) {
         console.error('API registration failed, falling back to local:', apiErr)

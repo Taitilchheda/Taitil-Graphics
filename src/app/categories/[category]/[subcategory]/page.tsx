@@ -1,20 +1,18 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
-import { useCart } from '@/components/providers/CartProvider'
 import { useCatalog } from '@/components/providers/CatalogProvider'
 import { useAnalytics } from '@/components/providers/AnalyticsProvider'
-import { ArrowLeft, MessageCircle, Heart, ShoppingCart } from 'lucide-react'
+import ProductCard from '@/components/ui/ProductCard'
+import { ArrowLeft, MessageCircle } from 'lucide-react'
 
 export default function SubcategoryPage() {
   const params = useParams()
-  const { addToCart, toggleLike, isLiked } = useCart()
-  const { categories, updateInventory } = useCatalog()
+  const { categories } = useCatalog()
   const { logEvent } = useAnalytics()
   
   const categoryId = params.category as string
@@ -34,38 +32,6 @@ export default function SubcategoryPage() {
     const whatsappUrl = `https://wa.me/917666247666?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
     logEvent({ type: 'inquiry', categoryId, subcategoryId, label: 'subcategory-contact' })
-  }
-
-  const handleProductWhatsApp = (productName: string, productMessage?: string) => {
-    const message = productMessage || `Hi! I'm interested in ${productName}. Could you please provide more details about customization options?`
-    const whatsappUrl = `https://wa.me/917666247666?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, '_blank')
-    logEvent({ type: 'inquiry', categoryId, subcategoryId, label: `product-${productName}` })
-  }
-
-  const handleAddToCart = (product: any) => {
-    const productForCart = {
-      id: product.id,
-      name: product.name,
-      image: product.image,
-      category: product.category,
-      description: product.description
-    }
-    addToCart(productForCart, 1)
-    logEvent({ type: 'cart', productId: product.id, categoryId, subcategoryId, quantity: 1, label: 'subcategory-add-to-cart' })
-    updateInventory(product.id, -1)
-  }
-
-  const handleToggleLike = (product: any) => {
-    const productForLike = {
-      id: product.id,
-      name: product.name,
-      image: product.image,
-      category: product.category,
-      description: product.description
-    }
-    toggleLike(productForLike)
-    logEvent({ type: 'click', productId: product.id, label: 'subcategory-like' })
   }
 
   if (!category || !subcategory) {
@@ -147,67 +113,12 @@ export default function SubcategoryPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
           {subcategory.products.map((product) => (
-            <div key={product.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-              <Link href={`/products/${product.id}`}>
-                <div className="aspect-w-16 aspect-h-12">
-                  <Image
-                    src={product.image}
-                    alt={product.name}
-                    width={400}
-                    height={300}
-                    className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-              </Link>
-              
-              <div className="p-4">
-                <Link href={`/products/${product.id}`}>
-                  <h3 className="font-semibold text-gray-900 mb-2 hover:text-primary-600 transition-colors">
-                    {product.name}
-                  </h3>
-                </Link>
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
-
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-primary-600">
-                    Contact for Quote
-                  </span>
-                  <button
-                    onClick={() => handleToggleLike(product)}
-                    className={`p-2 rounded-full transition-colors ${
-                      isLiked(product.id)
-                        ? 'bg-pink-100 text-pink-600'
-                        : 'bg-gray-100 text-gray-600 hover:bg-pink-50 hover:text-pink-600'
-                    }`}
-                  >
-                    <Heart className={`w-4 h-4 ${isLiked(product.id) ? 'fill-current' : ''}`} />
-                  </button>
-                </div>
-
-                <div className="space-y-2">
-                  <button
-                    onClick={() => handleProductWhatsApp(product.name, product.whatsappMessage)}
-                    className="w-full bg-primary-500 hover:bg-primary-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>WhatsApp Enquiry</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => handleAddToCart(product)}
-                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>Add to Cart</span>
-                  </button>
-                </div>
-              </div>
-            </div>
+            <ProductCard key={product.id} product={product} />
           ))}
         </div>
 
         {/* Call to Action */}
-        <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-lg p-8 text-center text-white">
+        <div className="bg-primary-500 rounded-lg p-8 text-center text-white">
           <h3 className="text-2xl font-bold mb-4">Need Custom Design?</h3>
           <p className="text-lg mb-6 opacity-90">
             Our design experts can help you create the perfect {subcategory.name.toLowerCase()} for your needs
@@ -232,5 +143,68 @@ export default function SubcategoryPage() {
 
       <Footer />
     </div>
+  )
+}
+
+const paperImages = [
+  'https://images.unsplash.com/photo-1527515545081-5db817172677?w=800&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=800&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&h=600&fit=crop',
+]
+
+const acrylicImages = [
+  'https://images.unsplash.com/photo-1486427944299-d1955d23e34d?w=800&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=800&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800&h=600&fit=crop',
+]
+
+const buildTopperList = (count: number, base: string, type: 'paper' | 'acrylic', pool: string[]) =>
+  Array.from({ length: count }).map((_, idx) => ({
+    id: `${type}-${idx + 1}`,
+    name: `${base} #${idx + 1}`,
+    type,
+    image: pool[idx % pool.length],
+    description: type === 'paper'
+      ? 'Ready-made layered cardstock topper with shimmer/foil finish. No customization.'
+      : 'Ready-made mirror/frosted acrylic topper. No customization.',
+  }))
+
+function CakeToppersView() {
+  const paper = useMemo(() => buildTopperList(100, 'Premium Paper Cake Topper', 'paper', paperImages), [])
+  const acrylic = useMemo(() => buildTopperList(200, 'Luxury Acrylic Cake Topper', 'acrylic', acrylicImages), [])
+
+  const cards = [...paper, ...acrylic]
+
+  return (
+    <>
+      <div className="mb-6">
+        <nav className="mb-4 text-sm text-gray-500">
+          <Link href="/" className="hover:text-primary-600">Home</Link> /
+          <Link href="/categories/cake-decorations" className="ml-1 hover:text-primary-600"> Cake Decoration</Link> /
+          <span className="ml-1 text-gray-900">Cake Toppers</span>
+        </nav>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Cake Toppers (Paper & Acrylic)</h1>
+        <p className="text-gray-600">200+ ready-made toppers. Select a design and send a WhatsApp enquiry—no customization.</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cards.map((item) => (
+          <Link
+            key={item.id}
+            href={`/products/cake-topper/${item.id}`}
+            className="border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition overflow-hidden bg-white"
+          >
+            <Image src={item.image} alt={item.name} width={400} height={260} className="w-full h-44 object-cover" />
+            <div className="p-4 space-y-2">
+              <div className="flex items-center justify-between text-xs text-primary-700">
+                <span className="capitalize">{item.type} topper</span>
+                <span className="text-gray-500">Ready-made</span>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">{item.name}</h3>
+              <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </>
   )
 }

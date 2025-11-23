@@ -308,17 +308,6 @@ export default function Header() {
                             >
                               {subcategory.name}
                             </Link>
-                            <div className="ml-4 space-y-1">
-                              {subcategory.products.slice(0, 3).map((product) => (
-                                <Link
-                                  key={product.id}
-                                  href={`/products/${product.id}`}
-                                  className="block text-xs text-gray-500 hover:text-primary-600"
-                                >
-                                  {product.name}
-                                </Link>
-                              ))}
-                            </div>
                           </div>
                         ))}
                       </div>

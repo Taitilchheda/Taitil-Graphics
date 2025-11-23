@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/components/providers/AuthProvider'
 import Header from '@/components/layout/Header'
-import ProductCard from '@/components/products/ProductCard'
+import ProductCard from '@/components/ui/ProductCard'
 import { Heart } from 'lucide-react'
 import Link from 'next/link'
 
