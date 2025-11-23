@@ -1,10 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { Phone, Mail, MapPin, Clock, MessageCircle, Facebook, Instagram, Twitter, Linkedin } from 'lucide-react'
+import { Phone, Mail, MapPin, Clock, MessageCircle, Facebook, Instagram, Sparkles, Flame } from 'lucide-react'
+import { useCatalog } from '@/components/providers/CatalogProvider'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
+  const { categories } = useCatalog()
+  const primaryCategories = categories.slice(0, 4)
+  const decorCategory = categories.find((cat) => cat.id === 'cake-decorations')
 
   const handleWhatsAppClick = () => {
     const message = "Hi! I'd like to know more about your printing services."
@@ -34,17 +38,11 @@ export default function Footer() {
             <div>
               <h4 className="font-semibold mb-3">Follow Us</h4>
               <div className="flex space-x-4">
-                <a href="#" className="text-gray-400 hover:text-teal-400 transition-colors">
+                <a href="https://www.facebook.com/BRChheda" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-teal-400 transition-colors">
                   <Facebook className="w-5 h-5" />
                 </a>
-                <a href="#" className="text-gray-400 hover:text-teal-400 transition-colors">
+                <a href="https://www.instagram.com/taitil_graphics/" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-teal-400 transition-colors">
                   <Instagram className="w-5 h-5" />
-                </a>
-                <a href="#" className="text-gray-400 hover:text-teal-400 transition-colors">
-                  <Twitter className="w-5 h-5" />
-                </a>
-                <a href="#" className="text-gray-400 hover:text-teal-400 transition-colors">
-                  <Linkedin className="w-5 h-5" />
                 </a>
               </div>
             </div>
@@ -59,29 +57,16 @@ export default function Footer() {
                   Home
                 </Link>
               </li>
+              {primaryCategories.map((cat) => (
+                <li key={cat.id}>
+                  <Link href={`/categories/${cat.id}`} className="text-gray-300 hover:text-teal-400 transition-colors">
+                    {cat.name}
+                  </Link>
+                </li>
+              ))}
               <li>
-                <Link href="/categories/visiting-cards" className="text-gray-300 hover:text-teal-400 transition-colors">
-                  Visiting Cards
-                </Link>
-              </li>
-              <li>
-                <Link href="/categories/stationery" className="text-gray-300 hover:text-teal-400 transition-colors">
-                  Stationery
-                </Link>
-              </li>
-              <li>
-                <Link href="/categories/marketing" className="text-gray-300 hover:text-teal-400 transition-colors">
-                  Marketing Materials
-                </Link>
-              </li>
-              <li>
-                <Link href="/categories/clothing-gifts" className="text-gray-300 hover:text-teal-400 transition-colors">
-                  Clothing & Gifts
-                </Link>
-              </li>
-              <li>
-                <Link href="/search" className="text-gray-300 hover:text-teal-400 transition-colors">
-                  Search Products
+                <Link href="/categories/all" className="text-gray-300 hover:text-teal-400 transition-colors">
+                  Browse all products
                 </Link>
               </li>
             </ul>
@@ -117,8 +102,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/categories/bulk-orders" className="text-gray-300 hover:text-teal-400 transition-colors">
-                  Bulk Orders
+                <Link href="/categories/cake-decorations" className="text-gray-300 hover:text-teal-400 transition-colors flex items-center space-x-2">
+                  <span>Cake decor & toppers</span>
                 </Link>
               </li>
             </ul>

@@ -11,6 +11,8 @@ export default function CartPage() {
   const { user } = useAuth()
   const { cartItems, updateQuantity, removeFromCart, cartItemCount } = useCart()
 
+  const isAdmin = user?.role === 'admin'
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -28,6 +30,11 @@ export default function CartPage() {
           <h1 className="text-3xl font-bold text-gray-900">
             Shopping Cart ({cartItemCount} {cartItemCount === 1 ? 'item' : 'items'})
           </h1>
+          {isAdmin && (
+            <p className="text-sm text-gray-600 mt-1">
+              Admin logged in. Use the admin dashboard for catalog/orders. This cart is for retailer shoppers.
+            </p>
+          )}
         </div>
 
         {cartItems.length === 0 ? (

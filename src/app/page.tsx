@@ -1,15 +1,32 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useAuth } from '@/components/providers/AuthProvider'
+import { useCatalog } from '@/components/providers/CatalogProvider'
+import { useAnalytics } from '@/components/providers/AnalyticsProvider'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
-import { categories } from '@/data/products'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Star, Users, Clock, Shield, MessageCircle } from 'lucide-react'
+import {
+  ArrowRight,
+  Star,
+  Users,
+  Clock,
+  Shield,
+  MessageCircle,
+  Flame,
+  Sparkles,
+} from 'lucide-react'
 
 export default function HomePage() {
   const { user, isLoading } = useAuth()
+  const { categories, newListings, recommendedProducts, hotSellers } = useCatalog()
+  const { logEvent } = useAnalytics()
+
+  useEffect(() => {
+    logEvent({ type: 'view', label: 'homepage' })
+  }, [logEvent])
 
   if (isLoading) {
     return (
@@ -23,6 +40,11 @@ export default function HomePage() {
     const message = "Hi! I'm interested in your printing services. Could you please provide more information?"
     const whatsappUrl = `https://wa.me/917666247666?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
+    logEvent({ type: 'inquiry', label: 'whatsapp-home' })
+  }
+
+  const handleCategoryClick = (categoryId: string) => {
+    logEvent({ type: 'click', categoryId, label: 'home-category-card' })
   }
 
   return (
@@ -31,38 +53,67 @@ export default function HomePage() {
 
       <main>
         {/* Hero Section */}
-        <section className="bg-gradient-to-r from-primary-200 to-primary-200 text-gray-500">
+        <section className="bg-gradient-to-br from-primary-100 via-white to-secondary-50 text-gray-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
-                <h1 className="text-4xl md:text-5xl font-bold mb-6">
-                  Professional Printing
-                  <span className="block text-primary-600">Made Simple</span>
+                <p className="inline-flex items-center text-sm font-semibold text-primary-700 bg-white px-3 py-1 rounded-full shadow-sm mb-4">
+                  <Sparkles className="w-4 h-4 mr-2" /> Everything for print, packaging & celebrations
+                </p>
+                <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
+                  Professional Printing &{' '}
+                  <span className="text-primary-700">Celebration Decor</span>
+                  <span className="block text-2xl text-gray-600 mt-3">Built like a modern Amazon-style catalog</span>
                 </h1>
-                <p className="text-xl mb-8 opacity-90">
-                  From business cards to marketing materials, we deliver high-quality printing solutions
-                  that make your brand stand out. Fast, reliable, and affordable.
-                  You think it we make it!
+                <p className="text-lg mb-8 text-gray-700">
+                  Studio-grade visiting cards, packaging, marketing kits, and now cake toppers and décor—curated,
+                  categorized, and ready to order fast. You think it, we make it.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
-                    href="/categories/business-essentials"
-                    className="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+                    href="/categories/all"
+                    onClick={() => handleCategoryClick('all')}
+                    className="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200"
                   >
-                    Start Your Project
+                    Explore Catalog
                   </Link>
                   <Link
-                    href="/categories/all"
-                    className="border-2 border-primary-600 text-primary-600 hover:bg-white hover:text-primary-600 px-8 py-3 rounded-lg font-semibold transition-colors"
+                    href="/categories/cake-decorations"
+                    onClick={() => handleCategoryClick('cake-decorations')}
+                    className="border-2 border-primary-600 text-primary-700 hover:bg-white hover:text-primary-700 px-8 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center"
                   >
-                    Browse All Products
+                    Cake Décor Picks
+                    <ArrowRight className="w-4 h-4 ml-2" />
                   </Link>
                 </div>
               </div>
               <div className="relative">
-                <Image
-                  src="/images/sweets box mockup 2.jpg" alt="Image description" width = {600} height = {400} className="rounded-lg shadow-xl"
-                />
+                <div className="absolute inset-0 bg-primary-200 blur-3xl opacity-50 rounded-full" />
+                <div className="relative bg-white rounded-2xl shadow-xl p-4 border border-primary-100">
+                  <Image
+                    src="/images/sweets box mockup 2.jpg"
+                    alt="Premium packaging and print"
+                    width={640}
+                    height={440}
+                    className="rounded-xl object-cover"
+                  />
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    <Image
+                      src="https://images.unsplash.com/photo-1527515545081-5db817172677?w=400&h=240&fit=crop"
+                      alt="Cake topper sample"
+                      width={300}
+                      height={200}
+                      className="rounded-lg object-cover"
+                    />
+                    <Image
+                      src="https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=400&h=240&fit=crop"
+                      alt="Decor bundle"
+                      width={300}
+                      height={200}
+                      className="rounded-lg object-cover"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -74,7 +125,7 @@ export default function HomePage() {
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">Shop by Category</h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                Explore our comprehensive range of professional printing services
+                Explore professional printing, packaging, and celebration decor—grouped just like an enterprise storefront.
               </p>
             </div>
 
@@ -83,6 +134,7 @@ export default function HomePage() {
                 <Link
                   key={category.id}
                   href={`/categories/${category.id}`}
+                  onClick={() => handleCategoryClick(category.id)}
                   className="group bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden"
                 >
                   <div className="aspect-w-16 aspect-h-9">
@@ -110,18 +162,62 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Featured Products */}
+        {/* New Listings */}
         <section className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">New Listings</h2>
+                <p className="text-gray-600">Fresh drops from print essentials to cake toppers. Order via call/WhatsApp.</p>
+              </div>
+              <Link href="/categories/all" className="text-primary-700 font-semibold hover:text-primary-800 flex items-center">
+                View all
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {newListings.slice(0, 4).map((product) => (
+                <div key={product.id} className="bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-lg transition-all">
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    width={320}
+                    height={200}
+                    className="w-full h-48 object-cover rounded-t-xl"
+                  />
+                  <div className="p-4 space-y-2">
+                    <span className="text-xs text-gray-500">
+                      {product.createdAt ? new Date(product.createdAt).toLocaleDateString() : 'Just added'}
+                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-primary-700 bg-primary-50 px-2 py-1 rounded-full">
+                        {product.badges?.[0] || 'New'}
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-gray-900">{product.name}</h3>
+                    <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
+                    <Link href={`/products/${product.id}`} className="inline-flex items-center text-primary-700 text-sm font-semibold">
+                      View details <ArrowRight className="w-4 h-4 ml-1" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Featured Products */}
+        <section className="py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Popular Products</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Recommended Products</h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                Our most requested printing solutions for businesses
+                Curated picks your customers love—fast-moving print staples and décor heroes.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {categories.flatMap(cat => cat.subcategories.flatMap(sub => sub.products)).slice(0, 4).map((product) => (
+              {recommendedProducts.slice(0, 4).map((product) => (
                 <div key={product.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
                   <Image
                     src={product.image}
@@ -145,6 +241,49 @@ export default function HomePage() {
                       </Link>
                     </div>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Hot Sellers */}
+        <section className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900 flex items-center">
+                  <Flame className="w-6 h-6 text-orange-500 mr-2" />
+                  Hot Sellers
+                </h2>
+                <p className="text-gray-600">High-volume SKUs we keep ready: toppers, balloons, business essentials.</p>
+              </div>
+              <Link href="/categories/all" className="text-primary-700 font-semibold hover:text-primary-800 flex items-center">
+                Browse everything <ArrowRight className="w-4 h-4 ml-1" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {hotSellers.slice(0, 4).map((product) => (
+                <div key={product.id} className="bg-gradient-to-br from-gray-50 to-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-all">
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    width={280}
+                    height={180}
+                    className="w-full h-44 object-cover rounded-lg mb-4"
+                  />
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-orange-700 bg-orange-50 px-2 py-1 rounded-full flex items-center">
+                      <Flame className="w-3 h-3 mr-1" /> Hot Seller
+                    </span>
+                    <span className="text-xs text-gray-500">Stock ready</span>
+                  </div>
+                  <h3 className="font-semibold text-gray-900">{product.name}</h3>
+                  <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
+                  <Link href={`/products/${product.id}`} className="text-primary-700 text-sm font-semibold inline-flex items-center mt-3">
+                    View details <ArrowRight className="w-4 h-4 ml-1" />
+                  </Link>
                 </div>
               ))}
             </div>
@@ -214,6 +353,7 @@ export default function HomePage() {
               </button>
               <Link
                 href="/categories/business-essentials"
+                onClick={() => handleCategoryClick('business-essentials')}
                 className="border-2 border-white text-white hover:bg-white hover:text-primary-600 px-8 py-3 rounded-lg font-semibold transition-colors"
               >
                 Browse Products

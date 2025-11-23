@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useCart } from '@/components/providers/CartProvider'
+import { useAnalytics } from '@/components/providers/AnalyticsProvider'
+import { useCatalog } from '@/components/providers/CatalogProvider'
 import { Heart, ShoppingCart, Star, ArrowRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -17,6 +19,10 @@ interface Product {
   reviews?: number
   isPopular?: boolean
   isBestSeller?: boolean
+  isHotSeller?: boolean
+  isRecommended?: boolean
+  isNew?: boolean
+  badges?: string[]
 }
 
 interface ProductCardProps {
@@ -27,12 +33,16 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, showQuickAdd = true, className = '' }: ProductCardProps) {
   const { addToCart, toggleLike, isLiked } = useCart()
+  const { logEvent } = useAnalytics()
+  const { updateInventory } = useCatalog()
   const [isHovered, setIsHovered] = useState(false)
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     addToCart(product)
+    updateInventory(product.id, -1)
+    logEvent({ type: 'cart', productId: product.id, categoryId: product.category, label: 'card-add' })
     toast.success(`${product.name} added to cart!`)
   }
 
@@ -40,6 +50,7 @@ export default function ProductCard({ product, showQuickAdd = true, className = 
     e.preventDefault()
     e.stopPropagation()
     toggleLike(product)
+    logEvent({ type: 'click', productId: product.id, label: 'card-like' })
     if (isLiked(product.id)) {
       toast.success(`Removed from liked products`)
     } else {
@@ -67,19 +78,29 @@ export default function ProductCard({ product, showQuickAdd = true, className = 
         
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col space-y-2">
-          {product.discount && (
-            <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-              {product.discount}% OFF
+          {product.badges?.map((badge) => (
+            <span key={badge} className="bg-gray-900/80 text-white px-2 py-1 rounded-full text-xs font-semibold">
+              {badge}
             </span>
-          )}
-          {product.isBestSeller && (
+          ))}
+          {product.isBestSeller && !product.badges?.length && (
             <span className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
               Best Seller
             </span>
           )}
-          {product.isPopular && !product.isBestSeller && (
+          {product.isHotSeller && !product.isBestSeller && (
+            <span className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+              Hot Seller
+            </span>
+          )}
+          {product.isPopular && !product.isBestSeller && !product.isHotSeller && (
             <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
               Popular
+            </span>
+          )}
+          {product.isRecommended && (
+            <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
+              Recommended
             </span>
           )}
         </div>

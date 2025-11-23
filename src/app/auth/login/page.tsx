@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/components/providers/AuthProvider'
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, ShieldCheck, Store } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [mode, setMode] = useState<'retailer' | 'admin'>('retailer')
   
   const { login } = useAuth()
   const router = useRouter()
@@ -24,9 +25,9 @@ export default function LoginPage() {
     const success = await login(email, password)
     
     if (success) {
-      router.push('/')
+      router.push(mode === 'admin' ? '/admin' : '/')
     } else {
-      setError('Invalid email or password')
+      setError('Invalid credentials. For admin, use your assigned email and password.')
     }
     
     setIsLoading(false)
@@ -37,8 +38,30 @@ export default function LoginPage() {
       <div className="max-w-md w-full">
         <div className="card">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-            <p className="text-gray-600">Sign in to your account</p>
+            <div className="inline-flex bg-gray-100 rounded-full p-1 text-sm mb-4">
+              <button
+                type="button"
+                onClick={() => setMode('retailer')}
+                className={`px-4 py-2 rounded-full flex items-center space-x-2 ${mode === 'retailer' ? 'bg-white shadow text-primary-700' : 'text-gray-500'}`}
+              >
+                <Store className="w-4 h-4" />
+                <span>Retailer Login</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('admin')}
+                className={`px-4 py-2 rounded-full flex items-center space-x-2 ${mode === 'admin' ? 'bg-white shadow text-primary-700' : 'text-gray-500'}`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Admin Login</span>
+              </button>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {mode === 'admin' ? 'Admin Access' : 'Welcome Back'}
+            </h1>
+            <p className="text-gray-600">
+              {mode === 'admin' ? 'Secure login for Taitil Graphics admin' : 'Sign in to your retailer account'}
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -54,7 +77,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input-field pl-10"
-                  placeholder="Enter your email"
+                  placeholder={mode === 'admin' ? 'Admin email' : 'Enter your email'}
                   required
                 />
               </div>
@@ -100,14 +123,23 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              Don't have an account?{' '}
-              <Link href="/auth/register" className="text-primary-600 hover:text-primary-700 font-medium">
-                Sign up
-              </Link>
-            </p>
-          </div>
+            {mode === 'retailer' && (
+              <div className="mt-6 text-center">
+                <p className="text-gray-600">
+                  Don't have an account?{' '}
+                  <Link href="/auth/register" className="text-primary-600 hover:text-primary-700 font-medium">
+                    Sign up
+                  </Link>
+                  <span className="text-xs text-gray-500 block mt-1">Your credentials are securely stored for retailer access.</span>
+                </p>
+              </div>
+            )}
+
+          {mode === 'admin' && (
+            <div className="mt-4 text-center text-sm text-gray-600">
+              Admin signup is disabled. Use the credentials shared with you to access the dashboard.
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { MessageCircle, Users, Clock, Send, Bot, User } from 'lucide-react'
+import { useAuth } from '@/components/providers/AuthProvider'
+import { useRouter } from 'next/navigation'
 
 interface ChatMessage {
   id: string
-  userId: string
+  conversationId: string
+  senderId: string
   message: string
-  sender: 'user' | 'support'
-  timestamp: Date
-  read: boolean
+  senderType: 'user' | 'admin'
+  createdAt: Date
+  isRead?: boolean
 }
 
 interface Conversation {
@@ -26,17 +29,28 @@ interface Conversation {
 }
 
 export default function AdminChatDashboard() {
+  const { user, isLoading } = useAuth()
+  const router = useRouter()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isConnected] = useState(true)
 
   // Simplified for demo without Socket.IO
 
   useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace('/auth/login')
+      return
+    }
     loadConversations()
-  }, [])
+  }, [isLoading, user])
+
+  if (!user || user.role !== 'admin') {
+    return null
+  }
 
   const loadConversations = async () => {
     setIsLoading(true)
@@ -84,10 +98,8 @@ export default function AdminChatDashboard() {
           senderId: 'user-1',
           senderType: 'user',
           message: 'Hello, I need help with your services',
-          messageType: 'text',
           isRead: true,
           createdAt: new Date(Date.now() - 600000),
-          updatedAt: new Date(Date.now() - 600000)
         },
         {
           id: 'msg-2',
@@ -95,10 +107,8 @@ export default function AdminChatDashboard() {
           senderId: 'ai-assistant',
           senderType: 'admin',
           message: 'Hello! I\'d be happy to help you with information about our services. What specific service are you interested in?',
-          messageType: 'text',
           isRead: true,
           createdAt: new Date(Date.now() - 300000),
-          updatedAt: new Date(Date.now() - 300000)
         }
       ]
       setMessages(mockMessages)
@@ -124,27 +134,16 @@ export default function AdminChatDashboard() {
     const messageText = newMessage
     setNewMessage('')
 
-    if (isConnected && sendMessage) {
-      sendMessage({
-        conversationId: selectedConversation.id,
-        message: messageText,
-        senderType: 'admin'
-      })
-
-      // Add message optimistically
-      const optimisticMessage: ChatMessage = {
-        id: 'temp-' + Date.now(),
-        conversationId: selectedConversation.id,
-        senderId: 'admin-user',
-        senderType: 'admin',
-        message: messageText,
-        messageType: 'text',
-        isRead: false,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-      setMessages(prev => [...prev, optimisticMessage])
+    const optimisticMessage: ChatMessage = {
+      id: 'temp-' + Date.now(),
+      conversationId: selectedConversation.id,
+      senderId: 'admin-user',
+      senderType: 'admin',
+      message: messageText,
+      isRead: false,
+      createdAt: new Date(),
     }
+    setMessages(prev => [...prev, optimisticMessage])
   }
 
   const formatTime = (date: Date | string) => {

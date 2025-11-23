@@ -1,82 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/components/providers/AuthProvider'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
-import ProductGrid from '@/components/products/ProductGrid'
+import ProductCard from '@/components/ui/ProductCard'
 import ProductFilters from '@/components/products/ProductFilters'
 import ChatWidget from '@/components/chat/ChatWidget'
+import { useCatalog } from '@/components/providers/CatalogProvider'
+import { useAnalytics } from '@/components/providers/AnalyticsProvider'
 import { Filter, Grid, List } from 'lucide-react'
 
 export default function VisitingCardsPage() {
   const { user } = useAuth()
+  const { getProductsBySubcategory } = useCatalog()
+  const { logEvent } = useAnalytics()
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showFilters, setShowFilters] = useState(false)
   const [sortBy, setSortBy] = useState('popular')
 
-  const products = [
-    {
-      id: 1,
-      name: 'Standard Visiting Cards',
-      description: 'Professional business cards with premium quality printing',
-      image: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=300&h=200&fit=crop',
-      rating: 4.5,
-      reviews: 1250,
-      category: 'Standard',
-      features: ['Premium Paper', 'Multiple Designs', 'Fast Delivery']
-    },
-    {
-      id: 2,
-      name: 'Premium Visiting Cards',
-      description: 'Luxury business cards with special finishes',
-      image: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=300&h=200&fit=crop',
-      rating: 4.8,
-      reviews: 890,
-      category: 'Premium',
-      features: ['Spot UV', 'Foil Stamping', 'Thick Paper']
-    },
-    {
-      id: 3,
-      name: 'QR Code Visiting Cards',
-      description: 'Modern business cards with QR code integration',
-      image: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=300&h=200&fit=crop',
-      rating: 4.6,
-      reviews: 567,
-      category: 'Digital',
-      features: ['QR Code', 'Digital Integration', 'Modern Design']
-    },
-    {
-      id: 4,
-      name: 'Rounded Corner Cards',
-      description: 'Stylish business cards with rounded corners',
-      image: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=300&h=200&fit=crop',
-      rating: 4.4,
-      reviews: 423,
-      category: 'Shaped',
-      features: ['Rounded Corners', 'Unique Shape', 'Eye-catching']
-    },
-    {
-      id: 5,
-      name: 'NFC Visiting Cards',
-      description: 'Smart business cards with NFC technology',
-      image: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=300&h=200&fit=crop',
-      rating: 4.9,
-      reviews: 234,
-      category: 'Smart',
-      features: ['NFC Chip', 'Digital Contact', 'Tech-Forward']
-    },
-    {
-      id: 6,
-      name: 'Transparent Cards',
-      description: 'Unique transparent business cards',
-      image: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=300&h=200&fit=crop',
-      rating: 4.7,
-      reviews: 345,
-      category: 'Specialty',
-      features: ['Transparent', 'Unique Material', 'Premium Look']
-    }
-  ]
+  const products = getProductsBySubcategory('business-essentials', 'visiting-cards')
+
+  useEffect(() => {
+    logEvent({ type: 'view', categoryId: 'business-essentials', subcategoryId: 'visiting-cards', label: 'visiting-cards-page' })
+  }, [logEvent])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -155,7 +102,15 @@ export default function VisitingCardsPage() {
             </div>
 
             {/* Product Grid */}
-            <ProductGrid products={products} viewMode={viewMode} />
+            <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+              {products.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product as any}
+                  className={viewMode === 'list' ? 'flex flex-row' : ''}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </main>

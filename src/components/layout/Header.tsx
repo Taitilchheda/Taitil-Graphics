@@ -5,16 +5,21 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { useCart } from '@/components/providers/CartProvider'
-import { Search, ShoppingCart, Heart, User, LogOut, FolderOpen, Menu, X, ChevronDown } from 'lucide-react'
+import { Search, ShoppingCart, Heart, User, FolderOpen, Menu, X, ChevronDown } from 'lucide-react'
 import Image from 'next/image'
-import { categories } from '@/data/products'
+import { useCatalog } from '@/components/providers/CatalogProvider'
+import { useAnalytics } from '@/components/providers/AnalyticsProvider'
 
 export default function Header() {
   const { user, logout } = useAuth()
   const { cartItemCount, likedItemCount } = useCart()
+  const { categories } = useCatalog()
+  const { logEvent } = useAnalytics()
   const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [suggestions, setSuggestions] = useState<{ id: string; label: string; href: string }[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
@@ -36,9 +41,49 @@ export default function Header() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
+      logEvent({ type: 'click', label: 'header-search', meta: { query: searchQuery } })
       router.push(`/search?q=${encodeURIComponent(searchQuery)}`)
+      setShowSuggestions(false)
     }
   }
+
+  const handleSuggestionClick = (href: string, label: string) => {
+    logEvent({ type: 'click', label: 'header-suggestion', meta: { suggestion: label } })
+    setShowSuggestions(false)
+    setSearchQuery(label)
+    router.push(href)
+  }
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    const lower = searchQuery.toLowerCase()
+    const matches: { id: string; label: string; href: string }[] = []
+
+    categories.forEach((cat) => {
+      if (cat.name.toLowerCase().includes(lower)) {
+        matches.push({ id: cat.id, label: cat.name, href: `/categories/${cat.id}` })
+      }
+      cat.subcategories.forEach((sub) => {
+        if (sub.name.toLowerCase().includes(lower)) {
+          matches.push({ id: `${cat.id}-${sub.id}`, label: `${sub.name} — ${cat.name}`, href: `/categories/${cat.id}/${sub.id}` })
+        }
+        sub.products.forEach((product) => {
+          const haystack = `${product.name} ${product.description} ${product.features.join(' ')}`.toLowerCase()
+          if (haystack.includes(lower)) {
+            matches.push({ id: product.id, label: product.name, href: `/products/${product.id}` })
+          }
+        })
+      })
+    })
+
+    setSuggestions(matches.slice(0, 8))
+    setShowSuggestions(true)
+  }, [categories, searchQuery])
 
   const handleLogout = async () => {
     try {
@@ -75,9 +120,35 @@ export default function Header() {
                   placeholder="Search for products, designs, or services..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => searchQuery && setShowSuggestions(true)}
                   className="w-full px-4 py-2 pl-10 pr-4 text-gray-700 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                {suggestions.map((suggestion) => (
+                  <button
+                    type="button"
+                    key={suggestion.id}
+                    onClick={() => handleSuggestionClick(suggestion.href, suggestion.label)}
+                        className="w-full text-left px-3 py-2 hover:bg-primary-50 text-sm text-gray-800"
+                      >
+                        {suggestion.label}
+                      </button>
+                    ))}
+                    <Link
+                      href={`/search?q=${encodeURIComponent(searchQuery)}`}
+                      onClick={() => {
+                        setShowSuggestions(false)
+                        logEvent({ type: 'click', label: 'header-suggestion-search', meta: { query: searchQuery } })
+                      }}
+                      className="block w-full text-left px-3 py-2 text-xs text-primary-700 border-t border-gray-100 bg-gray-50 hover:bg-primary-50"
+                    >
+                      Search for “{searchQuery}”
+                    </Link>
+                  </div>
+                )}
               </form>
             </div>
 
@@ -91,6 +162,7 @@ export default function Header() {
                 <FolderOpen className="w-6 h-6" />
                 <span className="text-xs mt-1">Projects</span>
               </Link>
+
 
               {/* Favourites */}
               <Link
@@ -144,13 +216,25 @@ export default function Header() {
                       >
                         My Account
                       </Link>
+                    {/* Orders removed - inquiries via WhatsApp */}
+                    {user.role !== 'admin' && (
                       <Link
-                        href="/orders"
+                        href="/retailer/dashboard"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         onClick={() => setShowUserMenu(false)}
                       >
-                        My Orders
+                        Retailer Dashboard
                       </Link>
+                    )}
+                    {user.role === 'admin' && (
+                      <Link
+                        href="/admin"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        onClick={() => setShowUserMenu(false)}
+                        >
+                          Admin Dashboard
+                        </Link>
+                      )}
                       <button
                         onClick={handleLogout}
                         className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"

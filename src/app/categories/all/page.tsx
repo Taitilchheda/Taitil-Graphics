@@ -1,38 +1,43 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import ProductCard from '@/components/ui/ProductCard'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Search, Filter, Grid, List, ArrowRight } from 'lucide-react'
-import { categories as productCategories } from '@/data/products'
-
-// Get all products from categories
-const allProducts = productCategories.flatMap(category =>
-  category.subcategories.flatMap(subcategory =>
-    subcategory.products.map(product => ({
-      ...product,
-      categoryName: category.name,
-      subcategoryName: subcategory.name,
-      rating: 4.8,
-      reviews: Math.floor(Math.random() * 200) + 50,
-      isPopular: Math.random() > 0.7,
-      isBestSeller: Math.random() > 0.8
-    }))
-  )
-)
-
-const categoryNames = ['All', ...productCategories.map(cat => cat.name)]
+import { useCatalog } from '@/components/providers/CatalogProvider'
+import { useAnalytics } from '@/components/providers/AnalyticsProvider'
 
 export default function AllProductsPage() {
+  const { categories, allProducts } = useCatalog()
+  const { logEvent } = useAnalytics()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [sortBy, setSortBy] = useState('popular')
 
-  const filteredProducts = allProducts.filter(product => {
+  useEffect(() => {
+    logEvent({ type: 'view', label: 'all-products' })
+  }, [logEvent])
+
+  const productsWithMeta = allProducts.map((product) => {
+    const category = categories.find((cat) => cat.id === product.category)
+    const subcategory = category?.subcategories.find((sub) => sub.id === product.subcategory)
+    return {
+      ...product,
+      categoryName: category?.name || product.category,
+      subcategoryName: subcategory?.name || product.subcategory,
+      rating: (product as any).rating || 4.8,
+      reviews: (product as any).reviews || Math.floor(Math.random() * 200) + 50,
+      isPopular: product.isRecommended,
+      isBestSeller: product.isHotSeller,
+    }
+  })
+
+  const categoryNames = ['All', ...categories.map((cat) => cat.name)]
+
+  const filteredProducts = productsWithMeta.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory = selectedCategory === 'All' || product.categoryName === selectedCategory
@@ -75,7 +80,13 @@ export default function AllProductsPage() {
                   type="text"
                   placeholder="Search products..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setSearchQuery(value)
+                    if (value.length > 2) {
+                      logEvent({ type: 'click', label: 'search', meta: { query: value } })
+                    }
+                  }}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                 />
               </div>

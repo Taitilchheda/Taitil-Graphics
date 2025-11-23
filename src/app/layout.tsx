@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { CartProvider } from '@/components/providers/CartProvider'
+import { CatalogProvider } from '@/components/providers/CatalogProvider'
+import { AnalyticsProvider } from '@/components/providers/AnalyticsProvider'
 import { Toaster } from 'react-hot-toast'
 import ChatbotButton from '@/components/ui/ChatbotButton'
 
@@ -22,30 +24,34 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <CartProvider>
-            {children}
-            <ChatbotButton />
-            <Toaster
-              position="bottom-left"
-              toastOptions={{
-                duration: 3000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-                success: {
-                  style: {
-                    background: '#167450',
-                  },
-                },
-                error: {
-                  style: {
-                    background: '#ef4444',
-                  },
-                },
-              }}
-            />
-          </CartProvider>
+          <CatalogProvider>
+            <CartProvider>
+              <AnalyticsProvider>
+                {children}
+                <ChatbotButton />
+                <Toaster
+                  position="bottom-left"
+                  toastOptions={{
+                    duration: 3000,
+                    style: {
+                      background: '#363636',
+                      color: '#fff',
+                    },
+                    success: {
+                      style: {
+                        background: '#167450',
+                      },
+                    },
+                    error: {
+                      style: {
+                        background: '#ef4444',
+                      },
+                    },
+                  }}
+                />
+              </AnalyticsProvider>
+            </CartProvider>
+          </CatalogProvider>
         </AuthProvider>
       </body>
     </html>

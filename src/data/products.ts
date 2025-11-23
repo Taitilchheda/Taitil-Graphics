@@ -8,6 +8,12 @@ export interface Product {
   features: string[]
   specifications?: Record<string, string>
   whatsappMessage: string
+  badges?: string[]
+  isRecommended?: boolean
+  isHotSeller?: boolean
+  isNew?: boolean
+  stock?: number
+  createdAt?: string
 }
 
 export interface Category {
@@ -43,7 +49,11 @@ export const categories: Category[] = [
             subcategory: 'visiting-cards',
             image: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=400&h=300&fit=crop',
             features: ['350gsm Premium Paper', 'Full Color Printing', 'Standard Size', 'Matte/Glossy Finish'],
-            whatsappMessage: 'Hi! I\'m interested in Standard Visiting Cards. Could you please provide details about customization options?'
+            whatsappMessage: 'Hi! I\'m interested in Standard Visiting Cards. Could you please provide details about customization options?',
+            isHotSeller: true,
+            isRecommended: true,
+            badges: ['Hot Seller'],
+            stock: 120
           },
           {
             id: 'rounded-corner-cards',
@@ -53,7 +63,10 @@ export const categories: Category[] = [
             subcategory: 'visiting-cards',
             image: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=400&h=300&fit=crop',
             features: ['Rounded Corners', 'Premium Finish', 'Unique Design', 'Professional Look'],
-            whatsappMessage: 'Hi! I\'m interested in Rounded Corner Visiting Cards. Please share details about design options.'
+            whatsappMessage: 'Hi! I\'m interested in Rounded Corner Visiting Cards. Please share details about design options.',
+            isRecommended: true,
+            badges: ['Recommended'],
+            stock: 85
           },
           {
             id: 'square-cards',
@@ -103,7 +116,10 @@ export const categories: Category[] = [
             subcategory: 'visiting-cards',
             image: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=400&h=300&fit=crop',
             features: ['Matte Finish', 'Premium 350gsm Paper', 'Elegant Look', 'Fingerprint Resistant'],
-            whatsappMessage: 'Hi! I\'m interested in Premium Matte Visiting Cards. Please provide customization details.'
+            whatsappMessage: 'Hi! I\'m interested in Premium Matte Visiting Cards. Please provide customization details.',
+            isHotSeller: true,
+            badges: ['Hot Seller'],
+            stock: 90
           },
           {
             id: 'non-tearable-cards',
@@ -429,6 +445,84 @@ export const categories: Category[] = [
             image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
             features: ['Canvas Material', 'High Resolution', 'Various Sizes', 'Ready to Hang'],
             whatsappMessage: 'Hi! I\'m interested in Canvas Prints. Please provide size options and details.'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'cake-decorations',
+    name: 'Cake Decoration',
+    description: 'Statement cake toppers and celebration decor for parties and events',
+    subcategories: [
+      {
+        id: 'cake-toppers',
+        name: 'Cake Toppers',
+        description: 'Personalized toppers to crown every celebration cake',
+        products: [
+          {
+            id: 'paper-cake-toppers',
+            name: 'Premium Paper Cake Toppers',
+            description: 'Layered cardstock toppers with foil, glitter, and custom names for birthdays and anniversaries',
+            category: 'cake-decorations',
+            subcategory: 'cake-toppers',
+            image: 'https://images.unsplash.com/photo-1527515545081-5db817172677?w=600&h=400&fit=crop',
+            features: ['300gsm shimmer cardstock', 'Multi-layer cut precision', 'Gold/silver foil finish', 'Custom names and ages'],
+            whatsappMessage: 'Hi! I want to order a custom paper cake topper. Please share design and size options.',
+            badges: ['New listing', 'Recommended'],
+            isRecommended: true,
+            isNew: true,
+            stock: 60,
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 'acrylic-cake-toppers',
+            name: 'Luxury Acrylic Cake Toppers',
+            description: 'Reusable mirror acrylic toppers with laser-cut lettering and metallic sheen',
+            category: 'cake-decorations',
+            subcategory: 'cake-toppers',
+            image: 'https://images.unsplash.com/photo-1486427944299-d1955d23e34d?w=600&h=400&fit=crop',
+            features: ['3mm mirror acrylic', 'Laser-cut precision', 'Gold/rose gold/silver finishes', 'Reusable and easy to clean'],
+            whatsappMessage: 'Hi! I am looking for acrylic cake toppers. Can you share colors, fonts, and delivery time?',
+            badges: ['Hot Seller'],
+            isHotSeller: true,
+            stock: 45,
+            createdAt: new Date().toISOString()
+          }
+        ]
+      },
+      {
+        id: 'party-decor',
+        name: 'Other Decorations',
+        description: 'Decor kits that pair perfectly with toppers for a complete celebration look',
+        products: [
+          {
+            id: 'balloon-bouquets',
+            name: 'Balloon Bouquets & Garlands',
+            description: 'Coordinated balloon sets with chrome, confetti, and number balloons',
+            category: 'cake-decorations',
+            subcategory: 'party-decor',
+            image: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=600&h=400&fit=crop',
+            features: ['Chrome + confetti mix', 'Optional name stickers', 'Includes strip and glue dots', 'Set-up guide included'],
+            whatsappMessage: 'Hi! I need a balloon garland to match my cake topper theme. Please help with colors and sizes.',
+            badges: ['Recommended'],
+            isRecommended: true,
+            stock: 80,
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 'butterfly-leaf-picks',
+            name: 'Butterfly & Leaf Picks',
+            description: 'Metallic butterflies, palm leaves, and florals to accent cakes and dessert tables',
+            category: 'cake-decorations',
+            subcategory: 'party-decor',
+            image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&h=400&fit=crop',
+            features: ['Foil butterflies', 'Palm leaves & pampas', 'Food-safe picks', 'Mix-and-match kits'],
+            whatsappMessage: 'Hi! I want butterfly/leaf decorations for my cake. Please share available colors and bundles.',
+            badges: ['Trending'],
+            isHotSeller: true,
+            stock: 70,
+            createdAt: new Date().toISOString()
           }
         ]
       }

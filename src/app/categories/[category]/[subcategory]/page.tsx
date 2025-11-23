@@ -1,18 +1,21 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import { useCart } from '@/components/providers/CartProvider'
-import { categories } from '@/data/products'
+import { useCatalog } from '@/components/providers/CatalogProvider'
+import { useAnalytics } from '@/components/providers/AnalyticsProvider'
 import { ArrowLeft, MessageCircle, Heart, ShoppingCart } from 'lucide-react'
 
 export default function SubcategoryPage() {
   const params = useParams()
   const { addToCart, toggleLike, isLiked } = useCart()
+  const { categories, updateInventory } = useCatalog()
+  const { logEvent } = useAnalytics()
   
   const categoryId = params.category as string
   const subcategoryId = params.subcategory as string
@@ -20,16 +23,24 @@ export default function SubcategoryPage() {
   const category = categories.find(cat => cat.id === categoryId)
   const subcategory = category?.subcategories.find(sub => sub.id === subcategoryId)
 
+  useEffect(() => {
+    if (category && subcategory) {
+      logEvent({ type: 'view', categoryId, subcategoryId, label: 'subcategory-page' })
+    }
+  }, [category, subcategory, categoryId, subcategoryId, logEvent])
+
   const handleWhatsAppContact = () => {
     const message = `Hi! I'm interested in ${subcategory?.name} products. Could you please provide more information?`
     const whatsappUrl = `https://wa.me/917666247666?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
+    logEvent({ type: 'inquiry', categoryId, subcategoryId, label: 'subcategory-contact' })
   }
 
   const handleProductWhatsApp = (productName: string, productMessage?: string) => {
     const message = productMessage || `Hi! I'm interested in ${productName}. Could you please provide more details about customization options?`
     const whatsappUrl = `https://wa.me/917666247666?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
+    logEvent({ type: 'inquiry', categoryId, subcategoryId, label: `product-${productName}` })
   }
 
   const handleAddToCart = (product: any) => {
@@ -41,6 +52,8 @@ export default function SubcategoryPage() {
       description: product.description
     }
     addToCart(productForCart, 1)
+    logEvent({ type: 'cart', productId: product.id, categoryId, subcategoryId, quantity: 1, label: 'subcategory-add-to-cart' })
+    updateInventory(product.id, -1)
   }
 
   const handleToggleLike = (product: any) => {
@@ -52,6 +65,7 @@ export default function SubcategoryPage() {
       description: product.description
     }
     toggleLike(productForLike)
+    logEvent({ type: 'click', productId: product.id, label: 'subcategory-like' })
   }
 
   if (!category || !subcategory) {

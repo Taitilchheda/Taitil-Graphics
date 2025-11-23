@@ -1,21 +1,30 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import { useCart } from '@/components/providers/CartProvider'
-import { getProductById } from '@/data/products'
+import { useCatalog } from '@/components/providers/CatalogProvider'
+import { useAnalytics } from '@/components/providers/AnalyticsProvider'
 import { MessageCircle, ArrowLeft, Heart, ShoppingCart, Check, Star } from 'lucide-react'
 
 export default function ProductPage() {
   const params = useParams()
   const { addToCart, toggleLike, isLiked } = useCart()
+  const { getProductById, updateInventory } = useCatalog()
+  const { logEvent } = useAnalytics()
 
   const productId = params.id as string
   const product = getProductById(productId)
+
+  useEffect(() => {
+    if (product) {
+      logEvent({ type: 'view', productId, categoryId: product.category, subcategoryId: product.subcategory, label: 'product-page' })
+    }
+  }, [product, productId, logEvent])
 
   const handleWhatsAppEnquiry = () => {
     if (!product) return
@@ -23,6 +32,7 @@ export default function ProductPage() {
     const message = product.whatsappMessage || `Hi! I'm interested in ${product.name}. Could you please provide more details about customization options?`
     const whatsappUrl = `https://wa.me/917666247666?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
+    logEvent({ type: 'inquiry', productId: product.id, categoryId: product.category, label: 'product-whatsapp' })
   }
 
   const handleAddToCart = () => {
@@ -37,6 +47,9 @@ export default function ProductPage() {
     }
 
     addToCart(productForCart, 1)
+    updateInventory(product.id, -1)
+    logEvent({ type: 'cart', productId: product.id, categoryId: product.category, subcategoryId: product.subcategory, quantity: 1, label: 'product-add-to-cart' })
+    logEvent({ type: 'sale', productId: product.id, categoryId: product.category, subcategoryId: product.subcategory, quantity: 1, label: 'product-sale-intent' })
   }
 
   const handleToggleLike = () => {
@@ -51,6 +64,7 @@ export default function ProductPage() {
     }
 
     toggleLike(productForLike)
+    logEvent({ type: 'click', productId: product.id, label: 'product-like' })
   }
 
   if (!product) {

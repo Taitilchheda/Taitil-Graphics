@@ -1,11 +1,16 @@
 'use client'
 
-import { useState } from 'react'
-import { MessageCircle, X, Send } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { MessageCircle, X, Send, Sparkles, Reply } from 'lucide-react'
+import { useCatalog } from '@/components/providers/CatalogProvider'
+import { useAnalytics } from '@/components/providers/AnalyticsProvider'
 
 export default function ChatbotButton() {
   const [isOpen, setIsOpen] = useState(false)
   const [message, setMessage] = useState('')
+  const [messages, setMessages] = useState<{ id: string; from: 'bot' | 'user'; text: string }[]>([])
+  const { categories } = useCatalog()
+  const { logEvent } = useAnalytics()
 
   const handleWhatsAppRedirect = () => {
     const whatsappMessage = message || "Hi! I'd like to know more about your services."
@@ -13,6 +18,7 @@ export default function ChatbotButton() {
     window.open(whatsappUrl, '_blank')
     setMessage('')
     setIsOpen(false)
+    logEvent({ type: 'inquiry', label: 'chatbot-whatsapp' })
   }
 
   const quickMessages = [
@@ -25,7 +31,48 @@ export default function ChatbotButton() {
 
   const handleQuickMessage = (msg: string) => {
     setMessage(msg)
+    setMessages(prev => [...prev, { id: `user-${Date.now()}`, from: 'user', text: msg }])
+    respond(msg)
   }
+
+  const respond = (input: string) => {
+    const flows: Record<string, string> = {
+      'visiting cards': 'We offer standard, rounded, matte, glossy, QR and premium business cards. I can share design templates or start a custom layout. Would you like matte or glossy?',
+      'wedding invitations': 'We design and print invitations with foil, embossing, and custom envelopes. Share your date and theme, and we’ll mock a concept.',
+      'marketing materials': 'Popular picks: flyers, brochures, vinyl banners, danglers, and standees. What quantity and size do you need?',
+      'packaging': 'We produce rigid boxes, product boxes, shopping bags, stickers, and sleeves. Tell me your product size and finish (matte/glossy/foil).',
+      'portfolio': 'You can explore our projects section for case studies and print samples. Want me to link you there?',
+    }
+
+    const lower = input.toLowerCase()
+    let reply =
+      Object.entries(flows).find(([key]) => lower.includes(key))?.[1] ||
+      'Got it! Tell me the product, quantity, and any finish you prefer and I’ll get a quote started.'
+
+    // Add a dynamic recommended category suggestion
+    const featuredCategory = categories[0]
+    if (featuredCategory) {
+      reply += ` Also, our ${featuredCategory.name} category is trending—want to view it?`
+    }
+
+    setTimeout(() => {
+      setMessages(prev => [...prev, { id: `bot-${Date.now()}`, from: 'bot', text: reply }])
+    }, 400)
+  }
+
+  const handleSend = () => {
+    if (!message.trim()) return
+    setMessages(prev => [...prev, { id: `user-${Date.now()}`, from: 'user', text: message }])
+    respond(message)
+    setMessage('')
+    logEvent({ type: 'click', label: 'chatbot-send' })
+  }
+
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      setMessages([{ id: 'welcome', from: 'bot', text: '👋 Hi! I’m your print assistant. Ask me about visiting cards, cake toppers, packaging, or any custom job.' }])
+    }
+  }, [isOpen, messages.length])
 
   return (
     <>
@@ -52,15 +99,21 @@ export default function ChatbotButton() {
           </div>
 
           {/* Content */}
-          <div className="p-4 max-h-96 overflow-y-auto">
-            {/* Welcome Message */}
-            <div className="mb-4">
-              <div className="bg-secondary-50 p-3 rounded-lg mb-3">
-                <p className="text-sm text-gray-700">
-                  👋 Hi there! Welcome to Taitil Graphics. How can we help you today?
-                </p>
+          <div className="p-4 max-h-96 overflow-y-auto space-y-3">
+            {messages.map((item) => (
+              <div
+                key={item.id}
+                className={`flex ${item.from === 'bot' ? 'justify-start' : 'justify-end'}`}
+              >
+                <div
+                  className={`max-w-[80%] px-3 py-2 rounded-lg text-sm ${
+                    item.from === 'bot' ? 'bg-gray-100 text-gray-800' : 'bg-primary-500 text-white'
+                  }`}
+                >
+                  {item.text}
+                </div>
               </div>
-            </div>
+            ))}
 
             {/* Quick Messages */}
             <div className="mb-4">
@@ -79,7 +132,7 @@ export default function ChatbotButton() {
             </div>
 
             {/* Message Input */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
@@ -88,13 +141,22 @@ export default function ChatbotButton() {
                 rows={3}
               />
               
-              <button
-                onClick={handleWhatsAppRedirect}
-                className="w-full bg-primary-500 hover:bg-primary-600 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>Send via WhatsApp</span>
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleSend}
+                  className="flex-1 bg-primary-500 hover:bg-primary-600 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Send</span>
+                </button>
+                <button
+                  onClick={handleWhatsAppRedirect}
+                  className="flex-1 bg-white border border-primary-200 text-primary-700 hover:bg-primary-50 py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>WhatsApp</span>
+                </button>
+              </div>
             </div>
 
             {/* Contact Info */}

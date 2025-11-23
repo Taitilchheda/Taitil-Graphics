@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { Search } from 'lucide-react'
-import ProductGrid from '@/components/products/ProductGrid'
+import ProductCard from '@/components/ui/ProductCard'
+import { useCatalog } from '@/components/providers/CatalogProvider'
+import { useAnalytics } from '@/components/providers/AnalyticsProvider'
 
 interface SearchResultsProps {
   initialQuery?: string
@@ -101,6 +103,8 @@ const allProducts = [
 ]
 
 export default function SearchResults({ initialQuery = '' }: SearchResultsProps) {
+  const { allProducts } = useCatalog()
+  const { logEvent } = useAnalytics()
   const [query, setQuery] = useState(initialQuery)
   const [searchResults, setSearchResults] = useState<typeof allProducts>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -146,16 +150,20 @@ export default function SearchResults({ initialQuery = '' }: SearchResultsProps)
 
       setSearchResults(results)
       setIsLoading(false)
+      logEvent({ type: 'click', label: 'search-results', meta: { query, hits: results.length } })
     }
 
     // Simulate search delay
     const timeoutId = setTimeout(performSearch, 300)
     return () => clearTimeout(timeoutId)
-  }, [query])
+  }, [query, allProducts, logEvent])
 
   useEffect(() => {
     setQuery(initialQuery)
-  }, [initialQuery])
+    if (initialQuery) {
+      logEvent({ type: 'view', label: 'search-page', meta: { query: initialQuery } })
+    }
+  }, [initialQuery, logEvent])
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -207,7 +215,11 @@ export default function SearchResults({ initialQuery = '' }: SearchResultsProps)
 
       {/* Search Results */}
       {!isLoading && searchResults.length > 0 && (
-        <ProductGrid products={searchResults} viewMode="grid" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {searchResults.map((product) => (
+            <ProductCard key={product.id} product={product as any} />
+          ))}
+        </div>
       )}
 
       {/* No Query */}
