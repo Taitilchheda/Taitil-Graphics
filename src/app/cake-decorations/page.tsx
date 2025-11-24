@@ -58,14 +58,14 @@ export default function CakeDecorationsPage() {
         ...prod,
         badges: [],
       }))
-    : buildTopperList(100, 'Premium Paper Topper', 'paper', paperImages)
+    : buildTopperList(10, 'Premium Paper Topper', 'paper', paperImages)
 
   const acrylicToppers = acrylicFromCatalog.length
     ? acrylicFromCatalog.map((prod) => ({
         ...prod,
         badges: [],
       }))
-    : buildTopperList(200, 'Luxury Acrylic Topper', 'acrylic', acrylicImages)
+    : buildTopperList(10, 'Luxury Acrylic Topper', 'acrylic', acrylicImages)
 
   useEffect(() => {
     logEvent({ type: 'view', categoryId: 'cake-decorations', label: 'cake-decorations-landing' })
@@ -83,7 +83,7 @@ export default function CakeDecorationsPage() {
             Paper & Acrylic Cake Toppers
           </h1>
           <p className="text-lg text-gray-700">
-            Category: Cake Decoration → Premium Paper Cake Toppers / Luxury Acrylic Cake Toppers. Browse hundreds of designs and confirm on WhatsApp.
+            Category: Cake Decoration → Premium Paper Cake Toppers / Luxury Acrylic Cake Toppers. Browse our curated sets and confirm on WhatsApp.
           </p>
           <div className="flex flex-wrap gap-3">
             <a
@@ -106,7 +106,7 @@ export default function CakeDecorationsPage() {
 
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">Wide Range of Premium Paper Cake Toppers</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Curated Premium Paper Cake Toppers</h2>
             <p className="text-sm text-gray-600">Premium Paper topper with plain/foil finish.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -118,7 +118,7 @@ export default function CakeDecorationsPage() {
 
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">Wide Range of Luxury Acrylic Cake Toppers</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Curated Luxury Acrylic Cake Toppers</h2>
             <p className="text-sm text-gray-600">Golden Mirror acrylic toppers.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -41,8 +41,8 @@ const buildTopperList = (count: number, base: string, type: TopperType, pool: st
   }))
 
 const toppers: Topper[] = [
-  ...buildTopperList(100, 'Premium Paper Cake Topper', 'paper', paperImages),
-  ...buildTopperList(200, 'Luxury Acrylic Cake Topper', 'acrylic', acrylicImages),
+  ...buildTopperList(10, 'Premium Paper Cake Topper', 'paper', paperImages),
+  ...buildTopperList(10, 'Luxury Acrylic Cake Topper', 'acrylic', acrylicImages),
 ]
 
 export default function CakeTopperDetailPage({ params }: { params: { id: string } }) {

@@ -31,7 +31,7 @@ const buildTopperList = (): TopperProduct[] => {
     'Tinted Pastel Acrylic',
   ]
 
-  return Array.from({ length: 200 }).map((_, idx) => ({
+  return Array.from({ length: 10 }).map((_, idx) => ({
     id: `acrylic-${idx + 1}`,
     name: `${baseNames[idx % baseNames.length]} #${idx + 1}`,
     image: topperImages[idx % topperImages.length],
@@ -61,7 +61,7 @@ export default function LuxuryAcrylicCakeToppersPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
         <div className="space-y-2">
           <p className="text-sm text-primary-700 font-semibold">Cake Decoration / Cake Toppers / Luxury Acrylic Cake Toppers</p>
-          <h1 className="text-3xl font-bold text-gray-900">Wide Range of Acrylic Cake Toppers</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Curated Acrylic Cake Toppers</h1>
           <p className="text-gray-600">Golden Mirror acrylic toppers. Tap a card to view details or add to cart.</p>
         </div>
 

@@ -16,65 +16,65 @@
       "static/chunks/main-app.js",
       "static/chunks/app/admin/page.js"
     ],
-    "/auth/login/page": [
+    "/admin/listings/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/auth/login/page.js"
+      "static/chunks/app/admin/listings/page.js"
     ],
-    "/auth/register/page": [
+    "/admin/listings/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/auth/register/page.js"
+      "static/chunks/app/admin/listings/[id]/page.js"
     ],
-    "/categories/cake-decorations/cake-toppers/page": [
+    "/admin/new/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/categories/cake-decorations/cake-toppers/page.js"
+      "static/chunks/app/admin/new/page.js"
     ],
     "/categories/cake-decorations/premium-paper-cake-toppers/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/categories/cake-decorations/premium-paper-cake-toppers/page.js"
     ],
-    "/categories/[category]/page": [
+    "/categories/cake-decorations/luxury-acrylic-cake-toppers/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/categories/[category]/page.js"
-    ],
-    "/products/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/products/[id]/page.js"
-    ],
-    "/categories/cake-decorations/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/categories/cake-decorations/page.js"
+      "static/chunks/app/categories/cake-decorations/luxury-acrylic-cake-toppers/page.js"
     ],
     "/categories/[category]/[subcategory]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/categories/[category]/[subcategory]/page.js"
     ],
-    "/categories/cake-decorations/luxury-acrylic-cake-toppers/page": [
+    "/products/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/categories/cake-decorations/luxury-acrylic-cake-toppers/page.js"
+      "static/chunks/app/products/[id]/page.js"
     ],
-    "/categories/all/page": [
+    "/categories/[category]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/categories/all/page.js"
+      "static/chunks/app/categories/[category]/page.js"
     ],
     "/account/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/account/page.js"
     ],
-    "/projects/page": [
+    "/categories/cake-decorations/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/projects/page.js"
+      "static/chunks/app/categories/cake-decorations/page.js"
+    ],
+    "/liked-products/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/liked-products/page.js"
+    ],
+    "/cart/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/cart/page.js"
     ]
   }
 }

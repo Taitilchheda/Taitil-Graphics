@@ -171,8 +171,8 @@ const buildTopperList = (count: number, base: string, type: 'paper' | 'acrylic',
   }))
 
 function CakeToppersView() {
-  const paper = useMemo(() => buildTopperList(100, 'Premium Paper Cake Topper', 'paper', paperImages), [])
-  const acrylic = useMemo(() => buildTopperList(200, 'Luxury Acrylic Cake Topper', 'acrylic', acrylicImages), [])
+  const paper = useMemo(() => buildTopperList(10, 'Premium Paper Cake Topper', 'paper', paperImages), [])
+  const acrylic = useMemo(() => buildTopperList(10, 'Luxury Acrylic Cake Topper', 'acrylic', acrylicImages), [])
 
   const cards = [...paper, ...acrylic]
 
@@ -185,7 +185,7 @@ function CakeToppersView() {
           <span className="ml-1 text-gray-900">Cake Toppers</span>
         </nav>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Cake Toppers (Paper & Acrylic)</h1>
-        <p className="text-gray-600">200+ ready-made toppers. Select a design and send a WhatsApp enquiry—no customization.</p>
+        <p className="text-gray-600">Curated ready-made toppers. Select a design and send a WhatsApp enquiry—no customization.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {cards.map((item) => (

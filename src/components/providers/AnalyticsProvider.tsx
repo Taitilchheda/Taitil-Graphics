@@ -21,6 +21,10 @@ interface AnalyticsSummary {
   totals: Record<EventType, number>
   recentEvents: AnalyticsEvent[]
   topProducts: Record<string, number>
+  productCounts: {
+    views: Record<string, number>
+    clicks: Record<string, number>
+  }
 }
 
 interface AnalyticsContextType {
@@ -88,11 +92,19 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
       'product-added': 0,
     }
     const topProducts: Record<string, number> = {}
+    const viewCounts: Record<string, number> = {}
+    const clickCounts: Record<string, number> = {}
 
     events.forEach((event) => {
       totals[event.type] = (totals[event.type] || 0) + 1
       if (event.productId) {
         topProducts[event.productId] = (topProducts[event.productId] || 0) + 1
+        if (event.type === 'view') {
+          viewCounts[event.productId] = (viewCounts[event.productId] || 0) + 1
+        }
+        if (event.type === 'click') {
+          clickCounts[event.productId] = (clickCounts[event.productId] || 0) + 1
+        }
       }
     })
 
@@ -100,6 +112,10 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
       totals,
       recentEvents: events.slice(0, 15),
       topProducts,
+      productCounts: {
+        views: viewCounts,
+        clicks: clickCounts,
+      },
     }
   }, [events])
 

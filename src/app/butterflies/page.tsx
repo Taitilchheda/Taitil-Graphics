@@ -23,7 +23,7 @@ interface ButterflyProduct {
 }
 
 const buildButterflies = (): ButterflyProduct[] =>
-  Array.from({ length: 50 }).map((_, idx) => ({
+  Array.from({ length: 10 }).map((_, idx) => ({
     id: `butterfly-${idx + 1}`,
     name: `Butterfly Accent Kit #${idx + 1}`,
     image: butterflyImages[idx % butterflyImages.length],
@@ -55,7 +55,7 @@ export default function ButterfliesPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
         <header className="space-y-2">
           <h1 className="text-3xl font-bold text-gray-900">Butterfly & Palm Leaf Picks</h1>
-          <p className="text-gray-600">Wide range of butterfly accent kits for cakes and decor.</p>
+          <p className="text-gray-600">Curated butterfly accent kits for cakes and decor.</p>
         </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

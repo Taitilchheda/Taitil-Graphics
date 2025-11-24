@@ -31,8 +31,8 @@ const buildTopperList = (): Topper[] => {
     'Minimal Serif Topper',
   ]
 
-  // Generate 200 items using rotating base names and images
-  return Array.from({ length: 200 }).map((_, idx) => ({
+  // Generate 10 items using rotating base names and images
+  return Array.from({ length: 10 }).map((_, idx) => ({
     id: `paper-${idx + 1}`,
     name: `${baseNames[idx % baseNames.length]} #${idx + 1}`,
     image: topperImages[idx % topperImages.length],
@@ -51,7 +51,7 @@ export default function PaperToppersPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
         <div className="space-y-2">
           <p className="text-sm text-primary-700 font-semibold">Cake Decoration / Cake Toppers / Premium Paper Cake Toppers</p>
-          <h1 className="text-3xl font-bold text-gray-900">Premium Paper Cake Toppers (100+)</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Premium Paper Cake Toppers (10)</h1>
           <p className="text-gray-600">Ready-made glitter/foil cardstock toppers. Tap a card to view details and WhatsApp enquiry.</p>
         </div>
 

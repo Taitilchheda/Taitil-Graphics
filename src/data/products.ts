@@ -521,20 +521,20 @@ export const categories: Category[] = [
       {
         id: 'premium-paper-cake-toppers',
         name: 'Premium Paper Cake Toppers',
-        description: '100+ ready-made layered cardstock toppers with foil/glitter finish. No customization.',
-        products: buildCakeTopperProducts('paper', 100)
+        description: '10 ready-made layered cardstock toppers with foil/glitter finish. No customization.',
+        products: buildCakeTopperProducts('paper', 10)
       },
       {
         id: 'luxury-acrylic-cake-toppers',
         name: 'Luxury Acrylic Cake Toppers',
-        description: '200+ ready-made mirror/frosted acrylic toppers in premium finishes. No customization.',
-        products: buildCakeTopperProducts('acrylic', 200)
+        description: '10 ready-made mirror/frosted acrylic toppers in premium finishes. No customization.',
+        products: buildCakeTopperProducts('acrylic', 10)
       },
       {
         id: 'butterfly-decoration',
         name: 'Butterfly & Leaf Picks',
         description: 'Colorful butterfly accent kits to pair with toppers and celebration decor.',
-        products: buildButterflyProducts(50)
+        products: buildButterflyProducts(10)
       },
       {
         id: 'party-decor',

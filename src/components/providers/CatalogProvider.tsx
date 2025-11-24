@@ -66,6 +66,7 @@ const STORAGE_KEYS = {
   customCategories: 'taitil-custom-categories',
   inventory: 'taitil-inventory',
   analytics: 'taitil-analytics-events',
+  hiddenProducts: 'taitil-hidden-products',
 }
 
 const cloneCatalog = (): Category[] =>
@@ -90,6 +91,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [inventory, setInventory] = useState<Record<string, number>>({})
   const [customCategories, setCustomCategories] = useState<Category[]>([])
   const [clickMap, setClickMap] = useState<Record<string, number>>({})
+  const [hiddenProducts, setHiddenProducts] = useState<Set<string>>(new Set())
   const baseCreatedAt = useMemo(() => {
     const map: Record<string, string> = {}
     const baseSeed = new Date('2024-01-01T00:00:00.000Z').getTime()
@@ -111,6 +113,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       const savedCategories = localStorage.getItem(STORAGE_KEYS.customCategories)
       const savedInventory = localStorage.getItem(STORAGE_KEYS.inventory)
       const savedAnalytics = localStorage.getItem(STORAGE_KEYS.analytics)
+      const savedHidden = localStorage.getItem(STORAGE_KEYS.hiddenProducts)
 
       if (savedProducts) {
         setCustomProducts(JSON.parse(savedProducts))
@@ -149,6 +152,14 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
           console.error('Failed to parse analytics for hot products', error)
         }
       }
+      if (savedHidden) {
+        try {
+          const parsed: string[] = JSON.parse(savedHidden)
+          setHiddenProducts(new Set(parsed))
+        } catch (error) {
+          console.error('Failed to parse hidden products', error)
+        }
+      }
     } catch (error) {
       console.error('Failed to load catalog data from storage', error)
     }
@@ -165,6 +176,10 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.inventory, JSON.stringify(inventory))
   }, [inventory])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.hiddenProducts, JSON.stringify(Array.from(hiddenProducts)))
+  }, [hiddenProducts])
 
   const addProduct = (input: NewProductInput): CatalogProduct => {
     const id = generateSlug(`${input.name}-${Date.now()}`)
@@ -230,6 +245,11 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
 
   const deleteProduct = (id: string) => {
     setCustomProducts((prev) => prev.filter((p) => p.id !== id))
+    // Hide seeded products locally so admin can "delete" them visually
+    const existsInCustom = customProducts.find((p) => p.id === id)
+    if (!existsInCustom) {
+      setHiddenProducts((prev) => new Set([...Array.from(prev), id]))
+    }
     setInventory((prev) => {
       const next = { ...prev }
       delete next[id]
@@ -349,11 +369,20 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
         category.subcategories.push(subcategory)
       }
 
-      subcategory.products.push(product)
+      if (!hiddenProducts.has(product.id)) {
+        subcategory.products.push(product)
+      }
+    })
+
+    // Drop hidden seeded products
+    catalog.forEach((cat) => {
+      cat.subcategories.forEach((sub) => {
+        sub.products = sub.products.filter((p) => !hiddenProducts.has(p.id))
+      })
     })
 
     return catalog
-  }, [customProducts])
+  }, [customProducts, hiddenProducts])
 
   const ensureCategory = (categoryId?: string, subcategoryId?: string) => {
     const catalog = cloneCatalog().concat(customCategories)
