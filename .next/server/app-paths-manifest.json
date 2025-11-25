@@ -1,1 +1,10 @@
-{}
+{
+  "/page": "app/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/categories/[category]/[subcategory]/page": "app/categories/[category]/[subcategory]/page.js",
+  "/admin/new/page": "app/admin/new/page.js",
+  "/products/[id]/page": "app/products/[id]/page.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/categories/cake-decorations/page": "app/categories/cake-decorations/page.js",
+  "/admin/listings/page": "app/admin/listings/page.js"
+}
