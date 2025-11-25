@@ -1,10 +1,1 @@
-{
-  "/admin/page": "app/admin/page.js",
-  "/admin/listings/[id]/page": "app/admin/listings/[id]/page.js",
-  "/categories/cake-decorations/premium-paper-cake-toppers/page": "app/categories/cake-decorations/premium-paper-cake-toppers/page.js",
-  "/admin/new/page": "app/admin/new/page.js",
-  "/page": "app/page.js",
-  "/categories/cake-decorations/page": "app/categories/cake-decorations/page.js",
-  "/liked-products/page": "app/liked-products/page.js",
-  "/cart/page": "app/cart/page.js"
-}
+{}

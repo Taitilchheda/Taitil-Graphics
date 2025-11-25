@@ -1,6 +1,7 @@
 'use client'
 
 import { useCart } from '@/components/providers/CartProvider'
+import { useAuth } from '@/components/providers/AuthProvider'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import { Heart, ShoppingCart, Trash2 } from 'lucide-react'
@@ -9,6 +10,23 @@ import Link from 'next/link'
 
 export default function LikedProductsPage() {
   const { likedProducts, toggleLike, addToCart, isLiked } = useCart()
+  const { user } = useAuth()
+
+  if (user?.role === 'admin') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-4">
+          <h1 className="text-3xl font-bold text-gray-900">Likes are for shoppers</h1>
+          <p className="text-gray-600">Admin accounts don&apos;t have liked products. Manage inventory and engagement from the dashboard.</p>
+          <Link href="/admin" className="btn-primary inline-flex items-center gap-2 justify-center">
+            Go to admin
+          </Link>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
 
   const handleAddToCart = (product: any) => {
     addToCart(product)

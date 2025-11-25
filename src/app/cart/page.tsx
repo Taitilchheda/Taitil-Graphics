@@ -12,6 +12,20 @@ export default function CartPage() {
   const { cartItems, updateQuantity, removeFromCart, cartItemCount } = useCart()
 
   const isAdmin = user?.role === 'admin'
+  if (isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-4">
+          <h1 className="text-3xl font-bold text-gray-900">Cart disabled for admin</h1>
+          <p className="text-gray-600">Admin accounts don&apos;t use the shopper cart. Manage catalog and orders from the dashboard.</p>
+          <Link href="/admin" className="btn-primary inline-flex items-center gap-2 justify-center">
+            Go to admin
+          </Link>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

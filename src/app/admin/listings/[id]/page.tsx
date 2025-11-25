@@ -63,7 +63,7 @@ export default function EditListingPage() {
     description: product.description,
     categoryId: product.category,
     subcategoryId: product.subcategory,
-    image: product.image,
+    images: product.images && product.images.length ? product.images : [product.image],
     features: product.features.join(', '),
   }
 
@@ -73,7 +73,8 @@ export default function EditListingPage() {
       description: data.description.trim(),
       categoryId: data.categoryId,
       subcategoryId: data.subcategoryId,
-      image: data.image,
+      image: data.images[0],
+      images: data.images,
       features: data.features.split(',').map((f) => f.trim()).filter(Boolean),
       badges: product.badges || ['Updated listing'],
     })

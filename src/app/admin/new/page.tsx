@@ -31,7 +31,8 @@ export default function NewListingPage() {
       description: data.description.trim(),
       categoryId: data.categoryId,
       subcategoryId: data.subcategoryId,
-      image: data.image,
+      image: data.images[0],
+      images: data.images,
       features: data.features.split(',').map((f) => f.trim()).filter(Boolean),
       badges: ['New listing'],
     })

@@ -1,6 +1,8 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react'
+import { useAuth } from '@/components/providers/AuthProvider'
+import { loadUserState, writeUserState } from '@/lib/userStateStore'
 
 interface Product {
   id: string
@@ -33,40 +35,57 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [likedProducts, setLikedProducts] = useState<Product[]>([])
+  const { user } = useAuth()
 
-  // Load data from localStorage on mount
+  const profileKey = useMemo(() => {
+    if (user?.role === 'admin') return 'admin'
+    if (user?.id) return user.id
+    if (user?.email) return `email-${user.email.toLowerCase()}`
+    return 'guest'
+  }, [user?.email, user?.id, user?.role])
+
+  // Load data for current user (includes migration from legacy keys)
   useEffect(() => {
-    const savedCart = localStorage.getItem('taitil-cart')
-    const savedLikes = localStorage.getItem('taitil-likes')
-    
-    if (savedCart) {
-      try {
-        setCartItems(JSON.parse(savedCart))
-      } catch (error) {
-        console.error('Error loading cart from localStorage:', error)
-      }
+    if (user?.role === 'admin') {
+      setCartItems([])
+      setLikedProducts([])
+      return
     }
-    
-    if (savedLikes) {
-      try {
-        setLikedProducts(JSON.parse(savedLikes))
-      } catch (error) {
-        console.error('Error loading likes from localStorage:', error)
-      }
+
+    const state = loadUserState(profileKey)
+    setCartItems(state.cart || [])
+    setLikedProducts(state.likes || [])
+
+    // migrate legacy shared keys only once per user profile
+    const legacyCart = localStorage.getItem('taitil-cart')
+    const legacyLikes = localStorage.getItem('taitil-likes')
+    if (legacyCart || legacyLikes) {
+      const migratedCart = state.cart && state.cart.length ? state.cart : legacyCart ? JSON.parse(legacyCart) : []
+      const migratedLikes = state.likes && state.likes.length ? state.likes : legacyLikes ? JSON.parse(legacyLikes) : []
+      writeUserState(profileKey, { cart: migratedCart, likes: migratedLikes })
+      if (legacyCart) localStorage.removeItem('taitil-cart')
+      if (legacyLikes) localStorage.removeItem('taitil-likes')
+      setCartItems(migratedCart)
+      setLikedProducts(migratedLikes)
     }
-  }, [])
+  }, [profileKey, user?.role])
 
-  // Save cart to localStorage whenever it changes
+  // Persist combined state per user (non-admin only)
   useEffect(() => {
-    localStorage.setItem('taitil-cart', JSON.stringify(cartItems))
-  }, [cartItems])
+    if (user?.role === 'admin') return
+    writeUserState(profileKey, { cart: cartItems, likes: likedProducts })
+  }, [cartItems, likedProducts, profileKey, user?.role])
 
-  // Save likes to localStorage whenever they change
+  // Clear state on logout to avoid flashing previous user data
   useEffect(() => {
-    localStorage.setItem('taitil-likes', JSON.stringify(likedProducts))
-  }, [likedProducts])
+    if (!user) {
+      setCartItems([])
+      setLikedProducts([])
+    }
+  }, [user])
 
   const addToCart = (product: Product, quantity: number = 1) => {
+    if (user?.role === 'admin') return
     setCartItems(prev => {
       const existingItem = prev.find(item => item.id === product.id)
       if (existingItem) {
@@ -81,10 +100,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   const removeFromCart = (productId: string) => {
+    if (user?.role === 'admin') return
     setCartItems(prev => prev.filter(item => item.id !== productId))
   }
 
   const updateQuantity = (productId: string, quantity: number) => {
+    if (user?.role === 'admin') return
     if (quantity <= 0) {
       removeFromCart(productId)
       return
@@ -98,10 +119,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   const clearCart = () => {
+    if (user?.role === 'admin') return
     setCartItems([])
   }
 
   const toggleLike = (product: Product) => {
+    if (user?.role === 'admin') return
     setLikedProducts(prev => {
       const isAlreadyLiked = prev.some(item => item.id === product.id)
       if (isAlreadyLiked) {
@@ -112,6 +135,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   const isLiked = (productId: string) => {
+    if (user?.role === 'admin') return false
     return likedProducts.some(item => item.id === productId)
   }
 

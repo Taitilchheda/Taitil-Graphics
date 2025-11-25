@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
 
+const getStableId = (user: Partial<User>) => user.id || user.email ? `email-${user.email?.toLowerCase()}` : 'guest'
+
 interface User {
   id: string
   email: string
@@ -17,6 +19,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>
   register: (email: string, password: string, name: string) => Promise<boolean>
   logout: () => void
+  deleteAccount: () => Promise<boolean>
   updateUser: (data: Partial<User>) => void
   isLoading: boolean
 }
@@ -37,11 +40,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const savedUser = localStorage.getItem('user')
     const savedDb = localStorage.getItem(LOCAL_USER_KEY)
     if (savedUser) {
-      setUser(JSON.parse(savedUser))
+      try {
+        const parsed: User = JSON.parse(savedUser)
+        const normalized: User = { ...parsed, id: getStableId(parsed), role: parsed.role || 'customer' }
+        setUser(normalized)
+        localStorage.setItem('user', JSON.stringify(normalized))
+      } catch {
+        setUser(null)
+      }
     }
     if (savedDb) {
       try {
-        setUserDb(JSON.parse(savedDb))
+        const parsedDb: User[] = JSON.parse(savedDb)
+        const normalizedDb = parsedDb.map((u) => ({ ...u, id: getStableId(u), role: u.role || 'customer' }))
+        setUserDb(normalizedDb)
+        localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(normalizedDb))
       } catch (error) {
         console.error('Error parsing user database:', error)
       }
@@ -67,8 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Local retailer DB first (offline friendly)
       const found = userDb.find((u) => u.email === email && u.password === password)
       if (found) {
-        setUser(found)
-        localStorage.setItem('user', JSON.stringify(found))
+        const normalized = { ...found, id: getStableId(found), role: found.role || 'customer' }
+        setUser(normalized)
+        localStorage.setItem('user', JSON.stringify(normalized))
         return true
       }
 
@@ -80,7 +94,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.ok) {
         const userData = await response.json()
-        const signedIn: User = { ...userData.user, role: userData.user.role || 'customer' }
+        const signedIn: User = {
+          ...userData.user,
+          id: getStableId(userData.user),
+          role: userData.user.role || 'customer',
+        }
         // Cache credentials locally for recurring users
         const cachedUser: User = { ...signedIn, ...(password ? { password } : {}) }
         persistDb([...userDb.filter((u) => u.email !== email), cachedUser])
@@ -124,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const exists = userDb.find((u) => u.email === email)
         if (exists) return false
         registeredUser = {
-          id: `user-${Date.now()}`,
+          id: getStableId({ email }),
           email,
           name,
           role: 'customer',
@@ -133,10 +151,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      const nextDb = [...userDb.filter((u) => u.email !== registeredUser!.email), registeredUser]
+      const normalizedUser = { ...registeredUser, id: getStableId(registeredUser) }
+      const nextDb = [...userDb.filter((u) => u.email !== normalizedUser.email), normalizedUser]
       persistDb(nextDb)
-      setUser(registeredUser)
-      localStorage.setItem('user', JSON.stringify(registeredUser))
+      setUser(normalizedUser)
+      localStorage.setItem('user', JSON.stringify(normalizedUser))
       return true
     } catch (error) {
       console.error('Registration error:', error)
@@ -147,6 +166,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setUser(null)
     localStorage.removeItem('user')
+  }
+
+  const deleteAccount = async (): Promise<boolean> => {
+    if (!user || user.role === 'admin') return false
+    try {
+      try {
+        await fetch('/api/auth/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: user.email }),
+        })
+      } catch (err) {
+        console.warn('API delete account not available, falling back to local removal')
+      }
+
+      const nextDb = userDb.filter((u) => u.email !== user.email)
+      persistDb(nextDb)
+      setUser(null)
+      localStorage.removeItem('user')
+      localStorage.removeItem(`taitil-cart-${getStableId(user)}`)
+      localStorage.removeItem(`taitil-likes-${getStableId(user)}`)
+      return true
+    } catch (err) {
+      console.error('Failed to delete account', err)
+      return false
+    }
   }
 
   const updateUser = (data: Partial<User>) => {
@@ -162,7 +207,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateUser, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, deleteAccount, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

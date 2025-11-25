@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
@@ -16,9 +16,16 @@ export default function ProductPage() {
   const { addToCart, toggleLike, isLiked } = useCart()
   const { getProductById, updateInventory } = useCatalog()
   const { logEvent } = useAnalytics()
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [showLightbox, setShowLightbox] = useState(false)
 
   const productId = params.id as string
   const product = getProductById(productId)
+  const gallery = useMemo(() => {
+    if (!product) return []
+    if (product.images && product.images.length) return product.images
+    return [product.image]
+  }, [product])
 
   useEffect(() => {
     if (product) {
@@ -29,7 +36,11 @@ export default function ProductPage() {
   const handleWhatsAppEnquiry = () => {
     if (!product) return
 
-    const message = product.whatsappMessage || `Hi! I'm interested in ${product.name}. Could you please provide more details about customization options?`
+    const shareableImage = gallery[selectedIndex] || gallery[0] || product.image || 'https://taitil.graphics/logo.svg'
+    const productLink = typeof window !== 'undefined' ? `${window.location.origin}/products/${product.id}` : ''
+    const message =
+      product.whatsappMessage ||
+      `Hi! I'm interested in: ${product.name}\nType: ${product.subcategory || product.category}\nImage: ${shareableImage}\nProduct page: ${productLink}\nNote: Ready-made, no customization.\nPlease confirm price and availability for this exact design.`
     const whatsappUrl = `https://wa.me/917666247666?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
     logEvent({ type: 'inquiry', productId: product.id, categoryId: product.category, label: 'product-whatsapp' })
@@ -41,7 +52,7 @@ export default function ProductPage() {
     const productForCart = {
       id: product.id,
       name: product.name,
-      image: product.image,
+      image: gallery[selectedIndex] || product.image,
       category: product.category,
       description: product.description
     }
@@ -58,7 +69,7 @@ export default function ProductPage() {
     const productForLike = {
       id: product.id,
       name: product.name,
-      image: product.image,
+      image: gallery[selectedIndex] || product.image,
       category: product.category,
       description: product.description
     }
@@ -119,28 +130,37 @@ export default function ProductPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Left Side - Product Images */}
           <div className="space-y-4">
-            <div className="aspect-square bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200">
+            <div
+              className="aspect-square bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200 group cursor-zoom-in relative"
+              onClick={() => setShowLightbox(true)}
+            >
               <Image
-                src={product.image}
+                src={gallery[selectedIndex]}
                 alt={product.name}
-                width={600}
-                height={600}
-                className="w-full h-full object-cover"
+                width={800}
+                height={800}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
+              <span className="absolute bottom-2 right-2 text-xs bg-white/80 text-gray-700 px-2 py-1 rounded">Click to zoom</span>
             </div>
 
-            {/* Additional product images */}
             <div className="grid grid-cols-4 gap-2">
-              {[1, 2, 3, 4].map((index) => (
-                <div key={index} className="aspect-square bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
+              {gallery.map((img, idx) => (
+                <button
+                  type="button"
+                  key={idx}
+                  onClick={() => setSelectedIndex(idx)}
+                  className={`aspect-square rounded border overflow-hidden ${selectedIndex === idx ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200 hover:border-primary-300'} transition`}
+                  title={`View image ${idx + 1}`}
+                >
                   <Image
-                    src={product.image}
-                    alt={`${product.name} view ${index}`}
-                    width={100}
-                    height={100}
-                    className="w-full h-full object-cover opacity-50"
+                    src={img}
+                    alt={`${product.name} view ${idx + 1}`}
+                    width={200}
+                    height={200}
+                    className="w-full h-full object-cover"
                   />
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -230,6 +250,43 @@ export default function ProductPage() {
           </div>
         </div>
       </main>
+
+      {showLightbox && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4"
+          onClick={() => setShowLightbox(false)}
+        >
+          <div className="max-w-5xl w-full flex flex-col gap-3">
+            <div className="flex justify-between items-center text-white text-sm">
+              <span>{product.name}</span>
+              <span className="opacity-80">Click anywhere to close</span>
+            </div>
+            <div className="relative bg-white rounded-lg overflow-hidden">
+              <Image
+                src={gallery[selectedIndex]}
+                alt={product.name}
+                width={1600}
+                height={1200}
+                className="w-full h-full object-contain max-h-[80vh] bg-black"
+              />
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {gallery.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedIndex(idx)
+                  }}
+                  className={`h-16 w-16 rounded border overflow-hidden flex-shrink-0 ${selectedIndex === idx ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200'}`}
+                >
+                  <Image src={img} alt={`thumb ${idx + 1}`} width={200} height={200} className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

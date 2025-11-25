@@ -12,6 +12,7 @@ interface Product {
   id: string
   name: string
   image: string
+  images?: string[]
   category: string
   description: string
   price?: string
@@ -58,6 +59,8 @@ export default function ProductCard({ product, showQuickAdd = true, className = 
     }
   }
 
+  const primaryImage = product.images && product.images.length ? product.images[0] : product.image
+
   return (
     <div
       className={`bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 ${className}`}
@@ -66,7 +69,7 @@ export default function ProductCard({ product, showQuickAdd = true, className = 
       <div className="relative overflow-hidden">
         <Link href={`/products/${product.id}`}>
           <Image
-            src={product.image}
+            src={primaryImage}
             alt={product.name}
             width={400}
             height={250}

@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/components/providers/AuthProvider'
 import Header from '@/components/layout/Header'
-import { User, Mail, Phone, MapPin, Edit, Save } from 'lucide-react'
+import { User, Mail, Phone, MapPin, Edit, Save, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 export default function AccountPage() {
-  const { user, logout, updateUser } = useAuth()
+  const { user, logout, updateUser, deleteAccount } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -47,6 +48,18 @@ export default function AccountPage() {
   const handleSave = () => {
     updateUser(formData)
     setIsEditing(false)
+  }
+
+  const handleDelete = async () => {
+    if (!user || user.role === 'admin') return
+    const confirmed = window.confirm('Delete your account and clear saved data on this device?')
+    if (!confirmed) return
+    setIsDeleting(true)
+    const ok = await deleteAccount()
+    setIsDeleting(false)
+    if (ok) {
+      window.location.href = '/'
+    }
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,6 +205,16 @@ export default function AccountPage() {
                 >
                   Sign Out
                 </button>
+                {user.role !== 'admin' && (
+                  <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="w-full flex items-center justify-center gap-2 text-sm bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg py-2 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {isDeleting ? 'Deleting...' : 'Delete Account'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -68,6 +68,7 @@ const STORAGE_KEYS = {
   analytics: 'taitil-analytics-events',
   hiddenProducts: 'taitil-hidden-products',
 }
+const STORAGE_BACKUP_SUFFIX = '-backup'
 
 const cloneCatalog = (): Category[] =>
   baseCategories.map((category) => ({
@@ -92,6 +93,37 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [customCategories, setCustomCategories] = useState<Category[]>([])
   const [clickMap, setClickMap] = useState<Record<string, number>>({})
   const [hiddenProducts, setHiddenProducts] = useState<Set<string>>(new Set())
+  const userStorageKeys = useMemo(() => {
+    const withSuffix = (base: string) => `${base}`
+    return {
+      customProducts: withSuffix(STORAGE_KEYS.customProducts),
+      customProductsBackup: withSuffix(STORAGE_KEYS.customProducts + STORAGE_BACKUP_SUFFIX),
+      customCategories: withSuffix(STORAGE_KEYS.customCategories),
+      customCategoriesBackup: withSuffix(STORAGE_KEYS.customCategories + STORAGE_BACKUP_SUFFIX),
+      inventory: STORAGE_KEYS.inventory,
+      hiddenProducts: withSuffix(STORAGE_KEYS.hiddenProducts),
+    }
+  }, [])
+
+  const safeLoad = <T,>(key: string, fallback: T): T => {
+    try {
+      const raw = localStorage.getItem(key)
+      if (!raw) return fallback
+      const parsed = JSON.parse(raw)
+      return parsed as T
+    } catch (error) {
+      console.error('Failed to parse storage key', key, error)
+      return fallback
+    }
+  }
+
+  const safeSave = (key: string, value: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value))
+    } catch (error) {
+      console.error('Failed to save storage key', key, error)
+    }
+  }
   const baseCreatedAt = useMemo(() => {
     const map: Record<string, string> = {}
     const baseSeed = new Date('2024-01-01T00:00:00.000Z').getTime()
@@ -109,24 +141,23 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const savedProducts = localStorage.getItem(STORAGE_KEYS.customProducts)
-      const savedCategories = localStorage.getItem(STORAGE_KEYS.customCategories)
-      const savedInventory = localStorage.getItem(STORAGE_KEYS.inventory)
+      const savedProducts = safeLoad<CatalogProduct[]>(userStorageKeys.customProducts, [])
+      const savedProductsBackup = safeLoad<CatalogProduct[]>(userStorageKeys.customProductsBackup, [])
+      const savedCategories = safeLoad<Category[]>(userStorageKeys.customCategories, [])
+      const savedCategoriesBackup = safeLoad<Category[]>(userStorageKeys.customCategoriesBackup, [])
+      const savedInventory = localStorage.getItem(userStorageKeys.inventory)
       const savedAnalytics = localStorage.getItem(STORAGE_KEYS.analytics)
-      const savedHidden = localStorage.getItem(STORAGE_KEYS.hiddenProducts)
+      const savedHidden = localStorage.getItem(userStorageKeys.hiddenProducts)
 
-      if (savedProducts) {
-        setCustomProducts(JSON.parse(savedProducts))
-      }
+      const productsToUse = savedProducts.length ? savedProducts : savedProductsBackup
+      const categoriesToUse = savedCategories.length ? savedCategories : savedCategoriesBackup
 
-      if (savedCategories) {
-        setCustomCategories(JSON.parse(savedCategories))
-      }
+      setCustomProducts(productsToUse)
+      setCustomCategories(categoriesToUse)
 
       if (savedInventory) {
         setInventory(JSON.parse(savedInventory))
       } else {
-        // Seed inventory for base products so admin sees quantities immediately
         const seeded: Record<string, number> = {}
         cloneCatalog().forEach((category) =>
           category.subcategories.forEach((sub) =>
@@ -160,26 +191,32 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
           console.error('Failed to parse hidden products', error)
         }
       }
+
+      // Persist backups for safety
+      safeSave(userStorageKeys.customProductsBackup, productsToUse)
+      safeSave(userStorageKeys.customCategoriesBackup, categoriesToUse)
     } catch (error) {
       console.error('Failed to load catalog data from storage', error)
     }
-  }, [])
+  }, [userStorageKeys.customCategories, userStorageKeys.customCategoriesBackup, userStorageKeys.customProducts, userStorageKeys.customProductsBackup, userStorageKeys.hiddenProducts, userStorageKeys.inventory])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.customProducts, JSON.stringify(customProducts))
-  }, [customProducts, customCategories])
+    safeSave(userStorageKeys.customProducts, customProducts)
+    safeSave(userStorageKeys.customProductsBackup, customProducts)
+  }, [customProducts, userStorageKeys.customProducts, userStorageKeys.customProductsBackup])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.customCategories, JSON.stringify(customCategories))
-  }, [customCategories])
+    safeSave(userStorageKeys.customCategories, customCategories)
+    safeSave(userStorageKeys.customCategoriesBackup, customCategories)
+  }, [customCategories, userStorageKeys.customCategories, userStorageKeys.customCategoriesBackup])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.inventory, JSON.stringify(inventory))
   }, [inventory])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.hiddenProducts, JSON.stringify(Array.from(hiddenProducts)))
-  }, [hiddenProducts])
+    localStorage.setItem(userStorageKeys.hiddenProducts, JSON.stringify(Array.from(hiddenProducts)))
+  }, [hiddenProducts, userStorageKeys.hiddenProducts])
 
   const addProduct = (input: NewProductInput): CatalogProduct => {
     const id = generateSlug(`${input.name}-${Date.now()}`)
