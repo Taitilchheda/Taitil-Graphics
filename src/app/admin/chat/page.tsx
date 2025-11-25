@@ -29,31 +29,31 @@ interface Conversation {
 }
 
 export default function AdminChatDashboard() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [loadingConversations, setLoadingConversations] = useState(false)
   const [isConnected] = useState(true)
 
   // Simplified for demo without Socket.IO
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!authLoading && !user) {
       router.replace('/auth/login')
       return
     }
     loadConversations()
-  }, [isLoading, user])
+  }, [authLoading, user, router])
 
   if (!user || user.role !== 'admin') {
     return null
   }
 
   const loadConversations = async () => {
-    setIsLoading(true)
+    setLoadingConversations(true)
     try {
       // In a real app, this would be an API call
       const mockConversations: Conversation[] = [
@@ -84,7 +84,7 @@ export default function AdminChatDashboard() {
     } catch (error) {
       console.error('Failed to load conversations:', error)
     } finally {
-      setIsLoading(false)
+      setLoadingConversations(false)
     }
   }
 

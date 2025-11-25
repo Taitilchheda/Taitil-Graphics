@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { addUser, findUserByEmail } from '@/lib/auth/mockUsers'
+import { prisma } from '@/lib/prisma'
+import { Role } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name } = await request.json()
+    const { email, password, name, phone, address } = await request.json()
 
-    // Check if user already exists
-    const existingUser = findUserByEmail(email)
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@taitil.graphics'
+    if (email === adminEmail) {
+      return NextResponse.json({ error: 'Admin cannot be registered here' }, { status: 400 })
+    }
 
+    const existingUser = await prisma.user.findUnique({ where: { email } })
     if (existingUser) {
       return NextResponse.json(
         { error: 'User already exists' },
@@ -15,25 +20,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create new user in shared mock store
-    const newUser = addUser({
-      email,
-      password, // In production, hash this password
-      name
+    const hashed = await bcrypt.hash(password, 10)
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        password: hashed,
+        name,
+        phone,
+        role: Role.CUSTOMER,
+      },
     })
 
-    if (!newUser) {
-      return NextResponse.json(
-        { error: 'User already exists' },
-        { status: 400 }
-      )
-    }
-
-    // Return user data (excluding password)
-    const { password: _, ...userWithoutPassword } = newUser
-
     return NextResponse.json({
-      user: userWithoutPassword,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role === Role.ADMIN ? 'admin' : 'customer',
+        phone: newUser.phone,
+      },
       message: 'Registration successful'
     })
   } catch (error) {

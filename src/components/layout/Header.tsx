@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { useCart } from '@/components/providers/CartProvider'
-import { Search, ShoppingCart, Heart, User, FolderOpen, Menu, X, ChevronDown } from 'lucide-react'
+import { Search, ShoppingCart, Heart, User, Menu, X, ChevronDown } from 'lucide-react'
 import Image from 'next/image'
 import { useCatalog } from '@/components/providers/CatalogProvider'
 import { useAnalytics } from '@/components/providers/AnalyticsProvider'
@@ -22,6 +22,8 @@ export default function Header() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isCondensed, setIsCondensed] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
 
   // Close user menu when clicking outside
@@ -95,12 +97,30 @@ export default function Header() {
     }
   }
 
+  useEffect(() => {
+    const updateViewport = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      setIsCondensed(mobile && window.scrollY > 60)
+    }
+    updateViewport()
+    const handleScroll = () => {
+      if (isMobile) setIsCondensed(window.scrollY > 60)
+    }
+    window.addEventListener('resize', updateViewport)
+    window.addEventListener('scroll', handleScroll)
+    return () => {
+      window.removeEventListener('resize', updateViewport)
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [isMobile])
+
   return (
     <>
       {/* Main Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50 ">
-        <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-4">
-          <div className="flex items-center justify-between h-28">
+      <header className="bg-white shadow-sm sticky top-0 z-50 transition-all duration-200">
+        <div className={`max-w-7xl mx-auto px-3 sm:px-4 lg:px-4 ${isMobile && isCondensed ? 'py-2' : 'py-3'}`}>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             {/* Logo */}
             <Link href="/" className="flex items-center">
               <Image
@@ -108,12 +128,12 @@ export default function Header() {
                 alt="Taitil Graphics"
                 width={180}
                 height={60}
-                className="h-24 w-auto"
+                className={`${isMobile && isCondensed ? 'h-14' : 'h-24'} w-auto transition-all duration-200`}
               />
             </Link>
 
             {/* Search Bar */}
-            <div className="flex-1 max-w-2xl mx-8">
+            <div className="w-full md:flex-1 md:max-w-2xl md:mx-6">
               <form onSubmit={handleSearch} className="relative">
                 <input
                   type="text"
@@ -153,17 +173,7 @@ export default function Header() {
             </div>
 
             {/* Right Navigation */}
-            <div className="flex items-center space-x-6">
-              {/* Projects */}
-              <Link
-                href="/projects"
-                className="flex flex-col items-center text-gray-600 hover:text-primary-600 transition-colors"
-              >
-                <FolderOpen className="w-6 h-6" />
-                <span className="text-xs mt-1">Projects</span>
-              </Link>
-
-
+            <div className="flex items-center justify-between md:justify-start space-x-4 md:space-x-6 text-xs">
               {/* Favourites */}
               <Link
                 href="/liked-products"
@@ -267,58 +277,77 @@ export default function Header() {
       </header>
 
       {/* Category Navigation */}
-      <nav className="bg-[#ffe6cc] border-b border-[#ffe6cc]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center space-x-8 h-12">
-            {/* View All */}
-            <Link
-              href="/categories/all"
-              className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-            >
-              View All
-            </Link>
-
-            {/* Category Links */}
-            {categories.map((category) => (
-              <div
-                key={category.id}
-                className="relative group"
-                onMouseEnter={() => setHoveredCategory(category.id)}
-                onMouseLeave={() => setHoveredCategory(null)}
-              >
-                <Link
-                  href={`/categories/${category.id}`}
-                  className="flex items-center space-x-1 text-gray-700 hover:text-primary-600 font-medium transition-colors py-3"
-                >
-                  <span>{category.name}</span>
-                  <ChevronDown className="w-4 h-4" />
+      {(!isMobile || !isCondensed) && (
+        <nav className="bg-[#ffe6cc] border-b border-[#ffe6cc] overflow-hidden md:overflow-visible">
+          {/* Mobile: horizontal scroll within container */}
+          <div className="md:hidden">
+            <div className="max-w-7xl mx-auto px-3">
+              <div className="flex items-center space-x-4 py-2 text-sm overflow-x-auto">
+                <Link href="/categories/all" className="flex-shrink-0 text-gray-700 hover:text-primary-600 font-semibold">
+                  View All
                 </Link>
-
-                {/* Dropdown Menu */}
-                {hoveredCategory === category.id && (
-                  <div className="absolute top-full left-0 mt-0 w-80 bg-white shadow-lg border border-gray-200 rounded-lg z-50">
-                    <div className="p-6">
-                      <h3 className="font-semibold text-gray-900 mb-4">{category.name}</h3>
-                      <div className="grid grid-cols-1 gap-4">
-                        {category.subcategories.map((subcategory) => (
-                          <div key={subcategory.id}>
-                            <Link
-                              href={`/categories/${category.id}/${subcategory.id}`}
-                              className="block text-sm font-medium text-gray-700 hover:text-primary-600 mb-2"
-                            >
-                              {subcategory.name}
-                            </Link>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {categories.map((category) => (
+                  <Link
+                    key={category.id}
+                    href={`/categories/${category.id}`}
+                    className="flex-shrink-0 text-gray-700 hover:text-primary-600 font-medium whitespace-nowrap"
+                  >
+                    {category.name}
+                  </Link>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      </nav>
+          {/* Desktop dropdown */}
+          <div className="hidden md:block">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center space-x-8 h-12">
+                <Link
+                  href="/categories/all"
+                  className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
+                >
+                  View All
+                </Link>
+                {categories.map((category) => (
+                  <div
+                    key={category.id}
+                    className="relative group"
+                    onMouseEnter={() => setHoveredCategory(category.id)}
+                    onMouseLeave={() => setHoveredCategory(null)}
+                  >
+                    <Link
+                      href={`/categories/${category.id}`}
+                      className="flex items-center space-x-1 text-gray-700 hover:text-primary-600 font-medium transition-colors py-3"
+                    >
+                      <span>{category.name}</span>
+                      <ChevronDown className="w-4 h-4" />
+                    </Link>
+                    {hoveredCategory === category.id && (
+                      <div className="absolute top-full left-0 mt-0 w-80 bg-white shadow-lg border border-gray-200 rounded-lg z-50">
+                        <div className="p-6">
+                          <h3 className="font-semibold text-gray-900 mb-4">{category.name}</h3>
+                          <div className="grid grid-cols-1 gap-4">
+                            {category.subcategories.map((subcategory) => (
+                              <div key={subcategory.id}>
+                                <Link
+                                  href={`/categories/${category.id}/${subcategory.id}`}
+                                  className="block text-sm font-medium text-gray-700 hover:text-primary-600 mb-2"
+                                >
+                                  {subcategory.name}
+                                </Link>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </nav>
+      )}
 
       {/* Mobile Menu */}
       {isMenuOpen && (

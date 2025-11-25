@@ -1,0 +1,149 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?
+  name      String?
+  role      Role     @default(CUSTOMER)
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses Address[]
+  carts     Cart[]
+  orders    Order[]
+}
+
+model Category {
+  id          String   @id
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subcategories Subcategory[]
+  products      Product[]
+}
+
+model Subcategory {
+  id          String   @id
+  name        String
+  description String?
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  description   String
+  categoryId    String
+  subcategoryId String?
+  image         String
+  images        Json?    // string[]
+  features      Json?    // string[]
+  badges        Json?    // string[]
+  isNew         Boolean  @default(true)
+  isRecommended Boolean? @default(true)
+  isHotSeller   Boolean? @default(false)
+  stock         Int?
+  whatsappMsg   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category    Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  subcategory Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  carts       CartItem[]
+  orderItems  OrderItem[]
+
+  @@index([categoryId])
+  @@index([subcategoryId])
+}
+
+model Address {
+  id        String   @id @default(uuid())
+  userId    String
+  fullName  String
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  postal    String
+  country   String   @default("IN")
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  productId String
+  quantity  Int      @default(1)
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id        String      @id @default(uuid())
+  userId    String
+  status    OrderStatus @default(PENDING)
+  total     Int?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     OrderItem[]
+  addressId String?
+  address   Address?   @relation(fields: [addressId], references: [id], onDelete: SetNull)
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int      @default(1)
+  price     Int?
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}

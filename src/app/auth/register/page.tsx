@@ -9,6 +9,8 @@ import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 export default function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [address, setAddress] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -35,7 +37,7 @@ export default function RegisterPage() {
       return
     }
 
-    const success = await register(email, password, name)
+    const success = await register(email, password, name, phone, address)
     
     if (success) {
       router.push('/')
@@ -87,6 +89,41 @@ export default function RegisterPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="input-field pl-10"
                   placeholder="Enter your email"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                Phone Number
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="input-field pl-10"
+                  placeholder="Enter your phone number"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+                Address
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <textarea
+                  id="address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="input-field pl-10 min-h-[80px]"
+                  placeholder="Full address"
                   required
                 />
               </div>

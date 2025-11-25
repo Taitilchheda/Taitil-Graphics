@@ -36,11 +36,14 @@ export default function ProductPage() {
   const handleWhatsAppEnquiry = () => {
     if (!product) return
 
-    const shareableImage = gallery[selectedIndex] || gallery[0] || product.image || 'https://taitil.graphics/logo.svg'
-    const productLink = typeof window !== 'undefined' ? `${window.location.origin}/products/${product.id}` : ''
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://taitilgraphics.com'
+    const productLink = `${origin}/products/${product.id}`
     const message =
       product.whatsappMessage ||
-      `Hi! I'm interested in: ${product.name}\nType: ${product.subcategory || product.category}\nImage: ${shareableImage}\nProduct page: ${productLink}\nNote: Ready-made, no customization.\nPlease confirm price and availability for this exact design.`
+      `Hi! I'm interested in: ${product.name}\n` +
+      `Type: ${product.subcategory || product.category}\n` +
+      `product: ${productLink}\n` +
+      `Note: Please confirm price and availability for this exact design.`
     const whatsappUrl = `https://wa.me/917666247666?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
     logEvent({ type: 'inquiry', productId: product.id, categoryId: product.category, label: 'product-whatsapp' })

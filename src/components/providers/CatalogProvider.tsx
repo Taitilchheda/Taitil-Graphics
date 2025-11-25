@@ -1,12 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import {
-  categories as baseCategories,
-  Category,
-  Product,
-  Subcategory,
-} from '@/data/products'
+import { categories as baseCategories, Category, Product, Subcategory } from '@/data/products'
 
 type CatalogProduct = Product & {
   createdAt?: string
@@ -16,9 +11,12 @@ type CatalogProduct = Product & {
   stock?: number
   badges?: string[]
   images?: string[]
+  categoryId?: string
+  subcategoryId?: string
 }
 
 interface NewProductInput {
+  id?: string
   name: string
   description: string
   categoryId?: string
@@ -43,8 +41,8 @@ interface CatalogContextType {
   newListings: CatalogProduct[]
   recommendedProducts: CatalogProduct[]
   hotSellers: CatalogProduct[]
-  addProduct: (product: NewProductInput) => CatalogProduct
-  updateProduct: (id: string, data: Partial<NewProductInput>) => CatalogProduct | null
+  addProduct: (product: NewProductInput) => void
+  updateProduct: (id: string, data: Partial<NewProductInput>) => void
   deleteProduct: (id: string) => void
   addCategory: (data: { name: string; description?: string }) => Category
   updateCategory: (id: string, data: Partial<Category>) => Category | null
@@ -61,15 +59,6 @@ interface CatalogContextType {
 
 const CatalogContext = createContext<CatalogContextType | undefined>(undefined)
 
-const STORAGE_KEYS = {
-  customProducts: 'taitil-custom-products',
-  customCategories: 'taitil-custom-categories',
-  inventory: 'taitil-inventory',
-  analytics: 'taitil-analytics-events',
-  hiddenProducts: 'taitil-hidden-products',
-}
-const STORAGE_BACKUP_SUFFIX = '-backup'
-
 const cloneCatalog = (): Category[] =>
   baseCategories.map((category) => ({
     ...category,
@@ -81,348 +70,80 @@ const cloneCatalog = (): Category[] =>
     })),
   }))
 
-const generateSlug = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '')
-
 export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [customProducts, setCustomProducts] = useState<CatalogProduct[]>([])
   const [inventory, setInventory] = useState<Record<string, number>>({})
-  const [customCategories, setCustomCategories] = useState<Category[]>([])
-  const [clickMap, setClickMap] = useState<Record<string, number>>({})
-  const [hiddenProducts, setHiddenProducts] = useState<Set<string>>(new Set())
-  const userStorageKeys = useMemo(() => {
-    const withSuffix = (base: string) => `${base}`
-    return {
-      customProducts: withSuffix(STORAGE_KEYS.customProducts),
-      customProductsBackup: withSuffix(STORAGE_KEYS.customProducts + STORAGE_BACKUP_SUFFIX),
-      customCategories: withSuffix(STORAGE_KEYS.customCategories),
-      customCategoriesBackup: withSuffix(STORAGE_KEYS.customCategories + STORAGE_BACKUP_SUFFIX),
-      inventory: STORAGE_KEYS.inventory,
-      hiddenProducts: withSuffix(STORAGE_KEYS.hiddenProducts),
+
+  const normalizeProduct = (p: any): CatalogProduct => ({
+    ...p,
+    images: p.images && Array.isArray(p.images) ? p.images : p.image ? [p.image] : ['/logo.svg'],
+    features: p.features || [],
+    badges: p.badges || [],
+    category: typeof p.category === 'object' && p.category?.id ? p.category.id : p.category || p.categoryId,
+    subcategory: typeof p.subcategory === 'object' && p.subcategory?.id ? p.subcategory.id : p.subcategory || p.subcategoryId,
+  })
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const res = await fetch('/api/products')
+        if (res.ok) {
+          const data = await res.json()
+          const dbProducts = (data.products || []).map(normalizeProduct)
+          setCustomProducts(dbProducts)
+        } else {
+          setCustomProducts([])
+        }
+      } catch (error) {
+        console.error('Failed to load products from DB', error)
+        setCustomProducts([])
+      }
     }
+    loadProducts()
   }, [])
-
-  const safeLoad = <T,>(key: string, fallback: T): T => {
-    try {
-      const raw = localStorage.getItem(key)
-      if (!raw) return fallback
-      const parsed = JSON.parse(raw)
-      return parsed as T
-    } catch (error) {
-      console.error('Failed to parse storage key', key, error)
-      return fallback
-    }
-  }
-
-  const safeSave = (key: string, value: any) => {
-    try {
-      localStorage.setItem(key, JSON.stringify(value))
-    } catch (error) {
-      console.error('Failed to save storage key', key, error)
-    }
-  }
-  const baseCreatedAt = useMemo(() => {
-    const map: Record<string, string> = {}
-    const baseSeed = new Date('2024-01-01T00:00:00.000Z').getTime()
-    const dayMs = 24 * 60 * 60 * 1000
-    cloneCatalog().forEach((category) =>
-      category.subcategories.forEach((sub) =>
-        sub.products.forEach((product, index) => {
-          map[product.id] =
-            product.createdAt || new Date(baseSeed - index * dayMs).toISOString()
-        })
-      )
-    )
-    return map
-  }, [])
-
-  useEffect(() => {
-    try {
-      const savedProducts = safeLoad<CatalogProduct[]>(userStorageKeys.customProducts, [])
-      const savedProductsBackup = safeLoad<CatalogProduct[]>(userStorageKeys.customProductsBackup, [])
-      const savedCategories = safeLoad<Category[]>(userStorageKeys.customCategories, [])
-      const savedCategoriesBackup = safeLoad<Category[]>(userStorageKeys.customCategoriesBackup, [])
-      const savedInventory = localStorage.getItem(userStorageKeys.inventory)
-      const savedAnalytics = localStorage.getItem(STORAGE_KEYS.analytics)
-      const savedHidden = localStorage.getItem(userStorageKeys.hiddenProducts)
-
-      const productsToUse = savedProducts.length ? savedProducts : savedProductsBackup
-      const categoriesToUse = savedCategories.length ? savedCategories : savedCategoriesBackup
-
-      setCustomProducts(productsToUse)
-      setCustomCategories(categoriesToUse)
-
-      if (savedInventory) {
-        setInventory(JSON.parse(savedInventory))
-      } else {
-        const seeded: Record<string, number> = {}
-        cloneCatalog().forEach((category) =>
-          category.subcategories.forEach((sub) =>
-            sub.products.forEach((product) => {
-              seeded[product.id] = product.stock || 40
-            })
-          )
-        )
-        setInventory(seeded)
-      }
-
-      if (savedAnalytics) {
-        try {
-          const events = JSON.parse(savedAnalytics) as { productId?: string; type: string }[]
-          const clicks: Record<string, number> = {}
-          events.forEach((evt) => {
-            if (evt.productId && (evt.type === 'click' || evt.type === 'view' || evt.type === 'cart' || evt.type === 'sale')) {
-              clicks[evt.productId] = (clicks[evt.productId] || 0) + 1
-            }
-          })
-          setClickMap(clicks)
-        } catch (error) {
-          console.error('Failed to parse analytics for hot products', error)
-        }
-      }
-      if (savedHidden) {
-        try {
-          const parsed: string[] = JSON.parse(savedHidden)
-          setHiddenProducts(new Set(parsed))
-        } catch (error) {
-          console.error('Failed to parse hidden products', error)
-        }
-      }
-
-      // Persist backups for safety
-      safeSave(userStorageKeys.customProductsBackup, productsToUse)
-      safeSave(userStorageKeys.customCategoriesBackup, categoriesToUse)
-    } catch (error) {
-      console.error('Failed to load catalog data from storage', error)
-    }
-  }, [userStorageKeys.customCategories, userStorageKeys.customCategoriesBackup, userStorageKeys.customProducts, userStorageKeys.customProductsBackup, userStorageKeys.hiddenProducts, userStorageKeys.inventory])
-
-  useEffect(() => {
-    safeSave(userStorageKeys.customProducts, customProducts)
-    safeSave(userStorageKeys.customProductsBackup, customProducts)
-  }, [customProducts, userStorageKeys.customProducts, userStorageKeys.customProductsBackup])
-
-  useEffect(() => {
-    safeSave(userStorageKeys.customCategories, customCategories)
-    safeSave(userStorageKeys.customCategoriesBackup, customCategories)
-  }, [customCategories, userStorageKeys.customCategories, userStorageKeys.customCategoriesBackup])
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.inventory, JSON.stringify(inventory))
-  }, [inventory])
-
-  useEffect(() => {
-    localStorage.setItem(userStorageKeys.hiddenProducts, JSON.stringify(Array.from(hiddenProducts)))
-  }, [hiddenProducts, userStorageKeys.hiddenProducts])
-
-  const addProduct = (input: NewProductInput): CatalogProduct => {
-    const id = generateSlug(`${input.name}-${Date.now()}`)
-    const { resolvedCategoryId, resolvedSubId } = ensureCategory(input.categoryId, input.subcategoryId)
-    const images = input.images && input.images.length > 0
-      ? input.images
-      : input.imageFiles && input.imageFiles.length > 0
-        ? input.imageFiles
-        : input.imageFile
-          ? [input.imageFile]
-          : input.image
-            ? [input.image]
-            : ['/logo.svg']
-    const image = images[0]
-
-    const newProduct: CatalogProduct = {
-      id,
-      name: input.name,
-      description: input.description,
-      category: resolvedCategoryId,
-      subcategory: resolvedSubId,
-      image,
-      images,
-      features: input.features,
-      whatsappMessage:
-        input.whatsappMessage ||
-        `Hi! I'm interested in ${input.name}. Could you share pricing and customization options?`,
-      isNew: true,
-      isRecommended: input.isRecommended ?? true,
-      isHotSeller: input.isHotSeller ?? false,
-      stock: input.stock,
-      badges: input.badges || ['New listing'],
-      createdAt: new Date().toISOString(),
-    }
-
-    setCustomProducts((prev) => [...prev, newProduct])
-    setInventory((prev) => ({ ...prev, [id]: newProduct.stock || 25 }))
-
-    return newProduct
-  }
-
-  const updateProduct = (id: string, data: Partial<NewProductInput>): CatalogProduct | null => {
-    let updatedProduct: CatalogProduct | null = null
-    setCustomProducts((prev) =>
-      prev.map((prod) => {
-        if (prod.id !== id) return prod
-        const images = data.images && data.images.length > 0
-          ? data.images
-          : data.imageFiles && data.imageFiles.length > 0
-            ? data.imageFiles
-            : prod.images
-        updatedProduct = {
-          ...prod,
-          ...data,
-          images,
-          image: images ? images[0] : prod.image,
-        }
-        return updatedProduct
-      })
-    )
-    return updatedProduct
-  }
-
-  const deleteProduct = (id: string) => {
-    setCustomProducts((prev) => prev.filter((p) => p.id !== id))
-    // Hide seeded products locally so admin can "delete" them visually
-    const existsInCustom = customProducts.find((p) => p.id === id)
-    if (!existsInCustom) {
-      setHiddenProducts((prev) => new Set([...Array.from(prev), id]))
-    }
-    setInventory((prev) => {
-      const next = { ...prev }
-      delete next[id]
-      return next
-    })
-  }
-
-  const addCategory = (data: { name: string; description?: string }): Category => {
-    const id = generateSlug(data.name)
-    const category: Category = {
-      id,
-      name: data.name,
-      description: data.description || 'Custom category',
-      subcategories: [],
-    }
-    setCustomCategories((prev) => [...prev, category])
-    return category
-  }
-
-  const updateCategory = (id: string, data: Partial<Category>): Category | null => {
-    let updated: Category | null = null
-    setCustomCategories((prev) =>
-      prev.map((cat) => {
-        if (cat.id !== id) return cat
-        updated = { ...cat, ...data, subcategories: cat.subcategories }
-        return updated
-      })
-    )
-    return updated
-  }
-
-  const deleteCategory = (id: string) => {
-    setCustomCategories((prev) => prev.filter((cat) => cat.id !== id))
-    setCustomProducts((prev) => prev.filter((p) => p.category !== id))
-  }
-
-  const addSubcategory = (categoryId: string, data: { name: string; description?: string }): Subcategory | null => {
-    const sub: Subcategory = {
-      id: generateSlug(data.name),
-      name: data.name,
-      description: data.description || '',
-      products: [],
-    }
-    setCustomCategories((prev) => {
-      const existing = prev.find((cat) => cat.id === categoryId)
-      if (existing) {
-        return prev.map((cat) => (cat.id === categoryId ? { ...cat, subcategories: [...cat.subcategories, sub] } : cat))
-      }
-      const baseCat = cloneCatalog().find((c) => c.id === categoryId)
-      const newCat: Category = baseCat
-        ? { ...baseCat, subcategories: [...baseCat.subcategories, sub] }
-        : { id: categoryId, name: categoryId, description: 'Custom category', subcategories: [sub] }
-      return [...prev, newCat]
-    })
-    return sub
-  }
-
-  const updateSubcategory = (categoryId: string, subcategoryId: string, data: Partial<Subcategory>): Subcategory | null => {
-    let updated: Subcategory | null = null
-    setCustomCategories((prev) =>
-      prev.map((cat) => {
-        if (cat.id !== categoryId) return cat
-        return {
-          ...cat,
-          subcategories: cat.subcategories.map((sub) => {
-            if (sub.id !== subcategoryId) return sub
-            updated = { ...sub, ...data }
-            return updated
-          }),
-        }
-      })
-    )
-    return updated
-  }
-
-  const deleteSubcategory = (categoryId: string, subcategoryId: string) => {
-    setCustomCategories((prev) =>
-      prev.map((cat) =>
-        cat.id === categoryId
-          ? { ...cat, subcategories: cat.subcategories.filter((sub) => sub.id !== subcategoryId) }
-          : cat
-      )
-    )
-    setCustomProducts((prev) => prev.filter((p) => !(p.category === categoryId && p.subcategory === subcategoryId)))
-  }
 
   const mergedCatalog = useMemo(() => {
     const catalog = cloneCatalog()
 
-    customCategories.forEach((cat) => {
-      const existing = catalog.find((c) => c.id === cat.id)
-      if (existing) {
-        cat.subcategories.forEach((sub) => {
-          const existsSub = existing.subcategories.find((s) => s.id === sub.id)
-          if (!existsSub) existing.subcategories.push(sub)
-        })
-      } else {
-        catalog.push(cat)
-      }
-    })
-
     customProducts.forEach((product) => {
-      const categoryId = product.category
-      const subcategoryId = product.subcategory || 'general'
+      const categoryId = product.category || product.categoryId || 'general'
+      const subcategoryId = product.subcategory || product.subcategoryId || 'general'
 
       let category = catalog.find((cat) => cat.id === categoryId)
-      if (!category) return
+      if (!category) {
+        category = {
+          id: categoryId,
+          name: categoryId,
+          description: 'Custom products',
+          subcategories: [],
+          createdAt: product.createdAt || new Date().toISOString(),
+          updatedAt: product.createdAt || new Date().toISOString(),
+          products: [],
+        }
+        catalog.push(category)
+      }
 
       let subcategory = category.subcategories.find((sub) => sub.id === subcategoryId)
       if (!subcategory) {
         subcategory = {
           id: subcategoryId,
-          name: product.subcategory || 'General',
+          name: subcategoryId,
           description: 'Custom products',
           products: [],
+          createdAt: product.createdAt || new Date().toISOString(),
+          updatedAt: product.createdAt || new Date().toISOString(),
         }
         category.subcategories.push(subcategory)
       }
 
-      if (!hiddenProducts.has(product.id)) {
-        subcategory.products.push(product)
-      }
-    })
-
-    // Drop hidden seeded products
-    catalog.forEach((cat) => {
-      cat.subcategories.forEach((sub) => {
-        sub.products = sub.products.filter((p) => !hiddenProducts.has(p.id))
-      })
+      subcategory.products.push(product)
     })
 
     return catalog
-  }, [customProducts, hiddenProducts])
+  }, [customProducts])
 
   const ensureCategory = (categoryId?: string, subcategoryId?: string) => {
-    const catalog = cloneCatalog().concat(customCategories)
+    const catalog = mergedCatalog
     const fallbackCategory = catalog[0]
     const resolvedCategoryId = categoryId && catalog.find((c) => c.id === categoryId) ? categoryId : fallbackCategory?.id
     const cat = catalog.find((c) => c.id === resolvedCategoryId)
@@ -437,96 +158,205 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
         sub.products.map((product) => ({
           ...product,
           images: product.images && product.images.length > 0 ? product.images : [product.image],
-          createdAt: product.createdAt || baseCreatedAt[product.id],
+          createdAt: product.createdAt,
           stock: inventory[product.id] ?? product.stock ?? 30,
-          isHotSeller: product.isHotSeller || (clickMap[product.id] || 0) >= 6,
-          isRecommended: product.isRecommended || (clickMap[product.id] || 0) >= 3,
-          badges:
-            product.badges && product.badges.length > 0
-              ? product.badges
-              : (clickMap[product.id] || 0) >= 6
-                ? ['Hot Seller']
-                : (clickMap[product.id] || 0) >= 3
-                  ? ['Trending']
-                  : product.badges,
+          isHotSeller: product.isHotSeller,
+          isRecommended: product.isRecommended,
+          badges: product.badges,
         }))
       )
     )
-  }, [mergedCatalog, inventory, baseCreatedAt, clickMap])
+  }, [mergedCatalog, inventory])
 
-  const getProductById = (id: string) => allProducts.find((product) => product.id === id)
+  const newListings = useMemo(() => allProducts.filter((product) => product.isNew).slice(0, 12), [allProducts])
+  const recommendedProducts = useMemo(() => allProducts.filter((product) => product.isRecommended), [allProducts])
+  const hotSellers = useMemo(() => allProducts.filter((product) => product.isHotSeller), [allProducts])
+
+  const addProduct = (input: NewProductInput) => {
+    const images =
+      input.images && input.images.length > 0
+        ? input.images
+        : input.imageFiles && input.imageFiles.length > 0
+          ? input.imageFiles
+          : input.image
+            ? [input.image]
+            : ['/logo.svg']
+    const features = input.features && input.features.length > 0 ? input.features : ['Premium finish', 'Fast delivery']
+
+    const payload = {
+      id: input.id,
+      name: input.name,
+      description: input.description,
+      categoryId: input.categoryId || 'general',
+      categoryName: input.categoryName,
+      subcategoryId: input.subcategoryId || 'general',
+      subcategoryName: input.subcategoryName,
+      image: images[0],
+      images,
+      features,
+      badges: input.badges || ['New listing'],
+      isRecommended: input.isRecommended ?? true,
+      isHotSeller: input.isHotSeller ?? false,
+      isNew: true,
+      stock: input.stock ?? 30,
+    }
+
+    fetch('/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Failed to save product')
+        const data = await res.json()
+        const normalized = normalizeProduct(data.product)
+        setCustomProducts((prev) => [normalized, ...prev])
+      })
+      .catch((err) => console.error('Failed to persist product to DB', err))
+
+    const optimistic: CatalogProduct = {
+      id: `temp-${Date.now()}`,
+      ...payload,
+      category: payload.categoryId,
+      subcategory: payload.subcategoryId,
+    }
+    setCustomProducts((prev) => [optimistic, ...prev])
+  }
+
+  const updateProduct = (id: string, data: Partial<NewProductInput>) => {
+    const images =
+      data.images && data.images.length > 0
+        ? data.images
+        : data.imageFiles && data.imageFiles.length > 0
+          ? data.imageFiles
+          : undefined
+
+    fetch(`/api/products/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...data,
+        images,
+        image: images ? images[0] : undefined,
+      }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Failed to update product')
+        const payload = await res.json()
+        const normalized = normalizeProduct(payload.product)
+        setCustomProducts((prev) => prev.map((p) => (p.id === id ? normalized : p)))
+      })
+      .catch((err) => console.error('Failed to update product in DB', err))
+
+    setCustomProducts((prev) =>
+      prev.map((prod) => {
+        if (prod.id !== id) return prod
+        return {
+          ...prod,
+          ...data,
+          images: images || prod.images,
+          image: images ? images[0] : prod.image,
+        }
+      })
+    )
+  }
+
+  const deleteProduct = (id: string) => {
+    setCustomProducts((prev) => prev.filter((p) => p.id !== id))
+    fetch(`/api/products/${id}`, { method: 'DELETE' }).catch((err) => console.error('Failed to delete product in DB', err))
+  }
+
+  const addCategory = (data: { name: string; description?: string }): Category => {
+    const newCategory: Category = {
+      id: data.name.toLowerCase().replace(/\s+/g, '-'),
+      name: data.name,
+      description: data.description || '',
+      subcategories: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      products: [],
+    }
+    return newCategory
+  }
+
+  const updateCategory = (_id: string, _data: Partial<Category>): Category | null => {
+    return null
+  }
+
+  const deleteCategory = (_id: string) => {}
+
+  const addSubcategory = (_categoryId: string, data: { name: string; description?: string }): Subcategory | null => {
+    const sub: Subcategory = {
+      id: data.name.toLowerCase().replace(/\s+/g, '-'),
+      name: data.name,
+      description: data.description || '',
+      products: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    return sub
+  }
+
+  const updateSubcategory = (_categoryId: string, _subcategoryId: string, _data: Partial<Subcategory>): Subcategory | null => {
+    return null
+  }
+
+  const deleteSubcategory = (_categoryId: string, _subcategoryId: string) => {}
+
+  const getProductById = (id: string) => allProducts.find((p) => p.id === id)
 
   const getProductsByCategory = (categoryId: string) =>
-    allProducts.filter((product) => product.category === categoryId)
+    allProducts.filter((product) => product.category === categoryId || product.categoryId === categoryId)
 
   const getProductsBySubcategory = (categoryId: string, subcategoryId: string) =>
-    allProducts.filter((product) => product.category === categoryId && product.subcategory === subcategoryId)
-
-  const newListings = useMemo(() => {
-    return [...allProducts]
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()
-      )
-      .slice(0, 8)
-  }, [allProducts])
-
-  const recommendedProducts = useMemo(
-    () =>
-      allProducts
-        .filter((product) => product.isRecommended || product.badges?.includes('Trending'))
-        .slice(0, 12),
-    [allProducts]
-  )
-
-  const hotSellers = useMemo(
-    () =>
-      allProducts
-        .filter((product) => product.isHotSeller || product.badges?.includes('Hot Seller'))
-        .slice(0, 12),
-    [allProducts]
-  )
+    allProducts.filter(
+      (product) =>
+        (product.category === categoryId || product.categoryId === categoryId) &&
+        (product.subcategory === subcategoryId || product.subcategoryId === subcategoryId)
+    )
 
   const updateInventory = (productId: string, delta: number) => {
     setInventory((prev) => {
-      if (prev[productId] === undefined) return prev
-      return {
-        ...prev,
-        [productId]: Math.max(0, (prev[productId] ?? 0) + delta),
-      }
+      const next = { ...prev }
+      next[productId] = (next[productId] || 0) + delta
+      return next
     })
   }
 
   const getInventory = (productId: string) => inventory[productId] ?? 0
 
-  const value: CatalogContextType = {
-    categories: mergedCatalog,
-    allProducts,
-    newListings,
-    recommendedProducts,
-    hotSellers,
-    addProduct,
-    updateProduct,
-    deleteProduct,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    addSubcategory,
-    updateSubcategory,
-    deleteSubcategory,
-    getProductById,
-    getProductsByCategory,
-    getProductsBySubcategory,
-    updateInventory,
-    getInventory,
-  }
-
-  return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>
+  return (
+    <CatalogContext.Provider
+      value={{
+        categories: mergedCatalog,
+        allProducts,
+        newListings,
+        recommendedProducts,
+        hotSellers,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        addCategory,
+        updateCategory,
+        deleteCategory,
+        addSubcategory,
+        updateSubcategory,
+        deleteSubcategory,
+        getProductById,
+        getProductsByCategory,
+        getProductsBySubcategory,
+        updateInventory,
+        getInventory,
+      }}
+    >
+      {children}
+    </CatalogContext.Provider>
+  )
 }
 
 export function useCatalog() {
   const context = useContext(CatalogContext)
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useCatalog must be used within a CatalogProvider')
   }
   return context
