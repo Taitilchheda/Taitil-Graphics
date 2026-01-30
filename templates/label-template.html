@@ -1,0 +1,55 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shipping Label - {{orderId}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9fafb; margin: 0; padding: 24px; }
+    .label { width: 500px; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; background: #ffffff; }
+    .row { display: flex; justify-content: space-between; gap: 12px; }
+    .block { flex: 1; }
+    .muted { color: #6b7280; font-size: 11px; }
+    .title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .barcode { margin-top: 16px; padding: 12px; border: 1px dashed #cbd5f5; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="label">
+    <div class="title">Taitil Graphics - Shipping Label</div>
+    <div class="row">
+      <div class="block">
+        <div class="muted">From</div>
+        <div>{{fromName}}</div>
+        <div class="muted">{{fromAddressLine1}}</div>
+        <div class="muted">{{fromAddressLine2}}</div>
+        <div class="muted">{{fromCity}}, {{fromState}} {{fromPostal}}</div>
+        <div class="muted">{{fromPhone}}</div>
+      </div>
+      <div class="block">
+        <div class="muted">To</div>
+        <div>{{toName}}</div>
+        <div class="muted">{{toAddressLine1}}</div>
+        <div class="muted">{{toAddressLine2}}</div>
+        <div class="muted">{{toCity}}, {{toState}} {{toPostal}}</div>
+        <div class="muted">{{toPhone}}</div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top: 12px;">
+      <div class="block">
+        <div class="muted">Order</div>
+        <div>{{orderId}}</div>
+      </div>
+      <div class="block">
+        <div class="muted">Items</div>
+        <div>{{itemSummary}}</div>
+      </div>
+    </div>
+
+    <div class="barcode">
+      {{barcode}}
+    </div>
+  </div>
+</body>
+</html>
