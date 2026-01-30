@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing idToken' }, { status: 400 })
     }
 
-    const decoded = await adminAuth.verifyIdToken(idToken)
+    const decoded = await adminAuth().verifyIdToken(idToken)
     const email = decoded.email?.toLowerCase()
     if (!email) {
       return NextResponse.json({ error: 'Email not available' }, { status: 400 })
