@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "subcategory_slug" varchar(160);

@@ -1,0 +1,321 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum ProductType {
+  PHYSICAL
+  SERVICE
+}
+
+enum AnalyticsEventType {
+  CLICK
+  VIEW
+  INQUIRY
+  CART
+  SALE
+  INVENTORY
+  PRODUCT_ADDED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?
+  name      String?
+  role      Role     @default(CUSTOMER)
+  phone     String?
+  address   String?
+  isBusiness Boolean @default(false)
+  businessName String?
+  gstNumber String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses Address[]
+  carts     Cart[]
+  orders    Order[]
+  reviews   Review[]
+  adminAudits AdminAudit[]
+}
+
+model Category {
+  id          String   @id
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subcategories Subcategory[]
+  products      Product[]
+}
+
+model Subcategory {
+  id          String   @id
+  name        String
+  description String?
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  description   String
+  categoryId    String
+  subcategoryId String?
+  image         String
+  images        Json?    // string[]
+  features      Json?    // string[]
+  badges        Json?    // string[]
+  type          ProductType @default(PHYSICAL)
+  variants      Json?    // [{name, options[]}]
+  media         Json?    // {images:[], videoUrl?:string}
+  seoTitle      String?
+  seoDescription String?
+  canonicalUrl  String?
+  priceCents    Int      @default(0)
+  weightGrams  Int?
+  lengthCm     Int?
+  widthCm      Int?
+  heightCm     Int?
+  hsnCode      String?
+  fragile      Boolean  @default(false)
+  listingPriceCents Int  @default(0)
+  discountPercent Int    @default(0)
+  sku           String?  @unique
+  stock         Int?
+  reserved      Int      @default(0)
+  reorderLevel  Int?     @default(5)
+  lowStockThreshold Int? @default(5)
+  isNew         Boolean  @default(true)
+  isRecommended Boolean? @default(true)
+  isHotSeller   Boolean? @default(false)
+  whatsappMsg   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category    Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  subcategory Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  carts       CartItem[]
+  orderItems  OrderItem[]
+  reviews     Review[]
+  leads       Lead[]
+
+  @@index([categoryId])
+  @@index([subcategoryId])
+}
+
+model Address {
+  id        String   @id @default(uuid())
+  userId    String
+  fullName  String
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  postal    String
+  country   String   @default("IN")
+  phone     String?
+  address   String?
+  isBusiness Boolean @default(false)
+  businessName String?
+  gstNumber String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  productId String
+  quantity  Int      @default(1)
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id                String        @id @default(uuid())
+  userId            String
+  status            OrderStatus   @default(PENDING)
+  paymentStatus     PaymentStatus @default(PENDING)
+  paymentProvider   String?
+  paymentMethod     String?
+  currency          String        @default("INR")
+  subtotalCents     Int           @default(0)
+  taxCents          Int           @default(0)
+  totalCents        Int           @default(0)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  razorpaySignature String?
+  refundId          String?
+  paidAt            DateTime?
+  refundedAt        DateTime?
+  shippingProvider  String?
+  shippingStatus    String?
+  trackingId        String?
+  trackingUrl       String?
+  trackingHistory   Json?
+  pickupRequestId   String?
+  labelUrl          String?
+  shippingError     String?
+  shipmentCreatedAt DateTime?
+  shipmentUpdatedAt DateTime?
+  inventoryAdjusted Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     OrderItem[]
+  addressId String?
+  address   Address?   @relation(fields: [addressId], references: [id], onDelete: SetNull)
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  productId  String
+  quantity   Int      @default(1)
+  priceCents Int      @default(0)
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model AnalyticsEvent {
+  id           String             @id @default(uuid())
+  type         AnalyticsEventType
+  productId    String?
+  categoryId   String?
+  subcategoryId String?
+  label        String?
+  quantity     Int?
+  value        Int?
+  meta         Json?
+  createdAt    DateTime           @default(now())
+
+  @@index([productId])
+  @@index([type])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  productId String
+  userId    String
+  rating    Int
+  title     String?
+  body      String?
+  verified  Boolean  @default(false)
+  status    String   @default("PENDING")
+  response  String?
+  respondedAt DateTime?
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([userId])
+}
+
+model Lead {
+  id          String   @id @default(uuid())
+  productId   String?
+  name        String
+  email       String?
+  phone       String
+  subject     String?
+  message     String?
+  requirement String?
+  budgetRange String?
+  timeline    String?
+  status      String   @default("NEW")
+  source      String?
+  assignedTo  String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+}
+
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  phone     String
+  purpose   String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  verifiedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([phone, purpose])
+  @@index([expiresAt])
+}
+
+model AdminAudit {
+  id        String   @id @default(uuid())
+  adminId   String
+  action    String
+  target    String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
+}
+
+model EmailEvent {
+  id        String   @id @default(uuid())
+  orderId   String?
+  toEmail   String
+  type      String
+  status    String   @default("PENDING")
+  error     String?
+  createdAt DateTime @default(now())
+}

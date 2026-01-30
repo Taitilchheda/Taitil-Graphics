@@ -1,0 +1,94 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoice - {{invoiceNumber}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #111827; margin: 0; padding: 32px; background: #f9fafb; }
+    .container { max-width: 900px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .brand { font-size: 20px; font-weight: 700; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .section { margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border-bottom: 1px solid #e5e7eb; padding: 10px 6px; text-align: left; font-size: 12px; }
+    th { color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+    .totals { margin-top: 16px; display: flex; justify-content: flex-end; }
+    .totals table { width: 280px; }
+    .totals td { text-align: right; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <div class="brand">Taitil Graphics</div>
+        <div class="muted">Studio-grade printing & celebration decor</div>
+      </div>
+      <div class="muted">
+        Invoice #: {{invoiceNumber}}<br />
+        Order ID: {{orderId}}<br />
+        Date: {{invoiceDate}}
+      </div>
+    </div>
+
+    <div class="section grid">
+      <div>
+        <div class="muted">Bill to</div>
+        <div>{{customerName}}</div>
+        <div class="muted">{{customerEmail}}</div>
+        <div class="muted">{{customerPhone}}</div>
+      </div>
+      <div>
+        <div class="muted">Ship to</div>
+        <div>{{shippingLine1}}</div>
+        <div class="muted">{{shippingLine2}}</div>
+        <div class="muted">{{shippingCity}}, {{shippingState}} {{shippingPostal}}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="badge">Prices inclusive of GST</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>SKU</th>
+            <th>Qty</th>
+            <th>MRP</th>
+            <th>Price</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{items}}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="totals">
+      <table>
+        <tr>
+          <td class="muted">Subtotal</td>
+          <td>{{subtotal}}</td>
+        </tr>
+        <tr>
+          <td class="muted">GST</td>
+          <td>{{gst}} (included)</td>
+        </tr>
+        <tr>
+          <td><strong>Total</strong></td>
+          <td><strong>{{total}}</strong></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section muted" style="margin-top: 24px;">
+      Payment: {{paymentMethod}} | Status: {{paymentStatus}}
+    </div>
+  </div>
+</body>
+</html>
