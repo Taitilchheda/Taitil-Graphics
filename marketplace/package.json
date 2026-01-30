@@ -9,7 +9,8 @@
         "start": "next start",
         "start:server": "NODE_ENV=production node server.js",
         "lint": "next lint",
-        "type-check": "tsc --noEmit"
+        "type-check": "tsc --noEmit",
+        "migrate": "node scripts/migrate.js"
     },
     "dependencies": {
         "@headlessui/react": "^1.7.17",
