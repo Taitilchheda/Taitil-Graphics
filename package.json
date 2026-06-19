@@ -26,10 +26,7 @@
     "razorpay": "^2.9.2",
     "react": "^18",
     "react-dom": "^18",
-<<<<<<< Updated upstream
-=======
     "react-hot-toast": "^2.4.1",
->>>>>>> Stashed changes
     "sharp": "^0.33.1",
     "tailwind-merge": "^2.2.0",
     "zod": "^4.3.6"
