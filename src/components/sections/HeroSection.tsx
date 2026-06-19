@@ -58,7 +58,7 @@ export default function HeroSection() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <div className="text-center">
               <div className="text-3xl font-bold text-primary-600 mb-2">500+</div>
-              <div className="text-gray-600">Business Services</div>
+              <div className="text-gray-600">Print Products</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-primary-600 mb-2">10k+</div>

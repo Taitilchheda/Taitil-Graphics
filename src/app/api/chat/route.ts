@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import path from 'node:path'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/server-auth'
 
@@ -20,7 +20,10 @@ type ChatStore = {
 }
 
 const guestCookieName = 'tg_chat_guest_id'
-const chatStorePath = path.join(process.cwd(), 'data', 'chat-messages.json')
+// Vercel's serverless runtime has a read-only filesystem except for `/tmp`.
+// Use `/tmp` for ephemeral chat persistence; fall back to an in-memory store
+// when even that fails (e.g. on platforms without any writable fs).
+const chatStorePath = path.join('/tmp', 'chat-messages.json')
 
 const fallbackStore: ChatStore = { messages: [] }
 
@@ -38,8 +41,13 @@ const loadStore = async (): Promise<ChatStore> => {
 }
 
 const saveStore = async (store: ChatStore) => {
-  await mkdir(path.dirname(chatStorePath), { recursive: true })
-  await writeFile(chatStorePath, JSON.stringify(store, null, 2), 'utf-8')
+  try {
+    await writeFile(chatStorePath, JSON.stringify(store, null, 2), 'utf-8')
+  } catch {
+    // Filesystem is read-only (or `/tmp` is unavailable). The in-memory
+    // fallbackStore was already used by loadStore, so we silently drop the
+    // write — messages will live for the lifetime of the running instance.
+  }
 }
 
 const isValidGuestId = (value: string) => /^[a-f0-9-]{16,}$/i.test(value)

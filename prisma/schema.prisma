@@ -5,7 +5,13 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Vercel runs on Linux (AWS Lambda). Without `binaryTargets`, Prisma
+  // generates a binary for the local dev platform only (e.g. Windows .dll.node)
+  // and the generated client will fail at runtime in production. The
+  // `native` entry covers local development; the Linux entries cover
+  // Vercel's Lambda runtime.
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
 enum Role {

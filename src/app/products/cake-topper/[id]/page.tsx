@@ -1,5 +1,6 @@
 'use client'
 
+import { useParams } from 'next/navigation'
 import { notFound } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
@@ -45,7 +46,8 @@ const toppers: Topper[] = [
   ...buildTopperList(10, 'Luxury Acrylic Cake Topper', 'acrylic', acrylicImages),
 ]
 
-export default function CakeTopperDetailPage({ params }: { params: { id: string } }) {
+export default function CakeTopperDetailPage() {
+  const params = useParams<{ id: string }>()
   const topper = toppers.find((t) => t.id === params.id)
   if (!topper) return notFound()
 

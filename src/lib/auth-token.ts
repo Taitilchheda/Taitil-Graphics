@@ -7,9 +7,9 @@ export type AuthTokenPayload = {
 }
 
 const getSecret = () => {
-  const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET
+  const secret = process.env.JWT_SECRET
   if (!secret) {
-    throw new Error('JWT_SECRET or NEXTAUTH_SECRET must be set')
+    throw new Error('JWT_SECRET must be set')
   }
   return secret
 }
