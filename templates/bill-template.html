@@ -1,0 +1,130 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoice - {{invoiceNumber}}</title>
+  <style>
+    body { font-family: "Segoe UI", Arial, sans-serif; color: #111827; margin: 0; padding: 20px; background: #f3f4f6; }
+    .container { max-width: 720px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
+    .brand { font-size: 22px; font-weight: 700; letter-spacing: 0.02em; }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo img { height: 44px; width: auto; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .section { margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border-bottom: 1px solid #e5e7eb; padding: 10px 6px; text-align: left; font-size: 12px; }
+    th { color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+    .totals { margin-top: 18px; display: flex; justify-content: flex-end; }
+    .totals table { width: 280px; }
+    .totals td { text-align: right; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 11px; }
+    @page { size: A4; margin: 16mm; }
+  @media print {
+    body { background: #ffffff; padding: 0; }
+    .container { border: none; box-shadow: none; padding: 0; margin: 0; }
+    .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="no-print" style="max-width: 720px; margin: 0 auto 12px; display: flex; justify-content: flex-end; gap: 8px;">
+    <button onclick="window.print()" style="border:1px solid #e5e7eb; background:#ffffff; color:#111827; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;">Download PDF</button>
+    <button onclick="window.print()" style="border:1px solid #111827; background:#111827; color:#ffffff; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;">Print</button>
+  </div>
+  <div class="container">
+    <div class="header">
+      <div>
+        <div class="logo">
+          <img src="{{logoUrl}}" alt="Taitil Graphics" />
+          <div>
+            <div class="brand">{{sellerName}}</div>
+                      </div>
+        </div>
+        <div class="muted" style="margin-top: 6px;">
+          {{sellerAddress}}<br />
+          {{sellerCityState}}<br />
+          GSTIN: {{sellerGstin}}<br />
+          {{sellerContact}}
+        </div>
+      </div>
+      <div class="muted">
+        <span style="display:inline-block; padding:4px 10px; border:1px solid #e5e7eb; border-radius:999px; font-size:10px; font-weight:600; margin-bottom:6px;">Tax Invoice</span><br/>
+        Invoice #: {{invoiceNumber}}<br />
+        Order ID: {{orderId}}<br />
+        Date: {{invoiceDate}}
+      </div>
+    </div>
+    <div style="border-top: 1px solid #e5e7eb; margin: 16px 0;"></div>
+
+    <div class="section grid">
+      <div>
+        <div class="muted">Bill to</div>
+        <div>{{customerName}}</div>
+        <div class="muted">{{customerEmail}}</div>
+        <div class="muted">{{customerPhone}}</div>
+      </div>
+      <div>
+        <div class="muted">Ship to</div>
+        <div>{{shippingLine1}}</div>
+        <div class="muted">{{shippingLine2}}</div>
+        <div class="muted">{{shippingCity}}, {{shippingState}} {{shippingPostal}}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>SKU</th>
+            <th>Qty</th>
+            <th>MRP</th>
+            <th>Price</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{items}}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="totals">
+      <table>
+        <tr>
+          <td class="muted">Subtotal</td>
+          <td>{{subtotal}}</td>
+        </tr>
+        <tr>
+          <td class="muted">Taxable value</td>
+          <td>{{taxable}}</td>
+        </tr>
+        <tr>
+          <td class="muted">CGST ({{cgstRate}}%)</td>
+          <td>{{cgst}}</td>
+        </tr>
+        <tr>
+          <td class="muted">SGST ({{sgstRate}}%)</td>
+          <td>{{sgst}}</td>
+        </tr>
+        <tr>
+          <td class="muted">IGST ({{igstRate}}%)</td>
+          <td>{{igst}}</td>
+        </tr>
+        <tr>
+          <td><strong>Total</strong></td>
+          <td><strong>{{total}}</strong></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section muted" style="margin-top: 24px;">
+      Payment: {{paymentMethod}} | Status: {{paymentStatus}}
+    
+    <div class="section muted" style="margin-top: 18px;">Thank you for shopping with Taitil Graphics.</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+.turbo
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment (keep .env.example tracked)
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Firebase / GCP service-account keys
+*.json
+!package.json
+!tsconfig.json
+!tsconfig.tsbuildinfo
+!next.config.json
+!postcss.config.json
+!tailwind.config.json
+!prisma/schema.prisma
+!package-lock.json
+
+# Prisma local dev DB
+prisma/dev.db*
+prisma/*.db-journal
