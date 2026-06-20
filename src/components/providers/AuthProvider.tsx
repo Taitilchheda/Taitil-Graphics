@@ -24,9 +24,18 @@ interface AuthContextType {
   verifyOtp: (email: string, otp: string, profile?: Partial<User>, purpose?: 'login' | 'signup') => Promise<{ ok: boolean; error?: string }>
   loginWithPassword: (email: string, password: string) => Promise<boolean>
   adminLogin: (email: string, password: string) => Promise<boolean>
+  registerWithPassword: (input: {
+    email: string
+    password: string
+    name: string
+    phone?: string
+    address?: string
+    isBusiness?: boolean
+    businessName?: string
+    gstNumber?: string
+  }) => Promise<{ ok: boolean; error?: string }>
   logout: () => void
-  sendOtpForAccountDelete: () => Promise<boolean>
-  deleteAccount: (otp: string) => Promise<boolean>
+  deleteAccount: (password: string) => Promise<boolean>
   updateUser: (data: Partial<User>) => void
   isLoading: boolean
 }
@@ -142,33 +151,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Password-based registration. Replaces the OTP signup flow that was
+  // broken when the OTP service went offline. Hits /api/auth/register-with-password
+  // (no CSRF needed — that endpoint isn't in CSRF_EXEMPT_PATHS but the
+  // cookie is set on every /api/* request by src/proxy.ts so the form
+  // works as long as the user has triggered any safe request first; the
+  // register page itself hits /api/auth/csrf on mount to be safe).
+  const registerWithPassword = async (input: {
+    email: string
+    password: string
+    name: string
+    phone?: string
+    address?: string
+    isBusiness?: boolean
+    businessName?: string
+    gstNumber?: string
+  }): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      // Make sure the CSRF cookie exists before the state-changing POST.
+      let csrfToken: string | null = null
+      if (typeof document !== 'undefined') {
+        const match = document.cookie
+          .split(';')
+          .map((c) => c.trim())
+          .find((c) => c.startsWith('x-csrf='))
+        if (match) csrfToken = match.slice('x-csrf='.length)
+        if (!csrfToken) {
+          try {
+            await fetch('/api/auth/csrf', { credentials: 'same-origin' })
+            const after = document.cookie
+              .split(';')
+              .map((c) => c.trim())
+              .find((c) => c.startsWith('x-csrf='))
+            if (after) csrfToken = after.slice('x-csrf='.length)
+          } catch {
+            // Non-fatal: the route also accepts unauthenticated POSTs since
+            // the user doesn't have a session yet, but the proxy may still
+            // 403 us. We try anyway.
+          }
+        }
+      }
+
+      const response = await fetch('/api/auth/register-with-password', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+        },
+        body: JSON.stringify(input),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        return { ok: false, error: payload.error || 'Sign-up failed.' }
+      }
+      const data = await response.json()
+      const signedIn: User = {
+        ...data.user,
+        token: data.token,
+        id: getStableId(data.user),
+        role: data.user.role || 'customer',
+      }
+      setUser(signedIn)
+      localStorage.setItem('user', JSON.stringify(signedIn))
+      return { ok: true }
+    } catch (error) {
+      console.error('Register error:', error)
+      return { ok: false, error: 'Sign-up failed. Please try again.' }
+    }
+  }
+
   const logout = () => {
     setUser(null)
     localStorage.removeItem('user')
   }
 
-  const sendOtpForAccountDelete = async (): Promise<boolean> => {
-    if (!user?.email) return false
-    try {
-      const response = await fetch('/api/auth/otp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, purpose: 'delete' }),
-      })
-      return response.ok
-    } catch (error) {
-      console.error('Send delete OTP error:', error)
-      return false
-    }
-  }
-
-  const deleteAccount = async (otp: string): Promise<boolean> => {
+  const deleteAccount = async (password: string): Promise<boolean> => {
     if (!user || user.role === 'admin') return false
     try {
       const response = await fetch('/api/account/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: user.token ? `Bearer ${user.token}` : '' },
-        body: JSON.stringify({ email: user.email, otp }),
+        body: JSON.stringify({ confirm: 'DELETE', password }),
       })
       if (!response.ok) {
         return false
@@ -194,7 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, sendOtp, verifyOtp, loginWithPassword, adminLogin, logout, sendOtpForAccountDelete, deleteAccount, updateUser, isLoading }}>
+    <AuthContext.Provider value={{ user, sendOtp, verifyOtp, loginWithPassword, adminLogin, registerWithPassword, logout, deleteAccount, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

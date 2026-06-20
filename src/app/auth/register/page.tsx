@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -14,8 +14,6 @@ export default function RegisterPage() {
   const [isBusiness, setIsBusiness] = useState(false)
   const [businessName, setBusinessName] = useState('')
   const [gstNumber, setGstNumber] = useState('')
-  const [otp, setOtp] = useState('')
-  const [otpPending, setOtpPending] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -23,7 +21,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const { sendOtp, verifyOtp, logout, user } = useAuth()
+  const { registerWithPassword, logout, user } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -32,22 +30,16 @@ export default function RegisterPage() {
     }
   }, [logout, user])
 
-  const handleSendOtp = async () => {
-    setError('')
-    setSuccess('')
-    if (!email) {
-      setError('Please enter your email first.')
-      return
-    }
-    setOtpPending(true)
-    const ok = await sendOtp(email, 'signup')
-    setOtpPending(false)
-    if (ok) {
-      setSuccess('OTP sent to your email.')
-    } else {
-      setError('Unable to send OTP. Please try again.')
-    }
+  // Surface password rules as the user types so they don't submit and
+  // discover the failure. Mirrors the server-side Zod constraints in
+  // registerBodySchema.
+  const passwordRules = {
+    length: password.length >= 10,
+    lower: /[a-z]/.test(password),
+    upper: /[A-Z]/.test(password),
+    digit: /\d/.test(password),
   }
+  const passwordOk = Object.values(passwordRules).every(Boolean)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,39 +47,33 @@ export default function RegisterPage() {
     setError('')
     setSuccess('')
 
-    if (!password || password.length < 6) {
-      setError('Password must be at least 6 characters long')
+    if (!passwordOk) {
+      setError('Password must be 10+ characters with lowercase, uppercase, and a digit.')
       setIsLoading(false)
       return
     }
-
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError('Passwords do not match.')
       setIsLoading(false)
       return
     }
 
-    if (!otp) {
-      setError('Enter the OTP sent to your email.')
-      setIsLoading(false)
-      return
-    }
-
-    const result = await verifyOtp(email, otp, {
+    const result = await registerWithPassword({
+      email: email.trim(),
       password,
-      name,
-      phone,
-      address,
+      name: name.trim(),
+      phone: phone.trim() || undefined,
+      address: address.trim() || undefined,
       isBusiness,
-      businessName,
-      gstNumber,
-    }, 'signup')
+      businessName: isBusiness ? businessName.trim() || undefined : undefined,
+      gstNumber: isBusiness ? gstNumber.trim() || undefined : undefined,
+    })
 
     if (result.ok) {
-      setSuccess('Account verified. You are now signed in.')
+      setSuccess('Account created. You are now signed in.')
       setTimeout(() => router.push('/'), 800)
     } else {
-      setError(result.error || 'OTP verification failed. Please try again.')
+      setError(result.error || 'Sign-up failed. Please try again.')
     }
 
     setIsLoading(false)
@@ -99,7 +85,10 @@ export default function RegisterPage() {
         <div className="card">
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-            <p className="text-gray-600">Join as a retailer to manage your orders and favourites.</p>
+            <p className="text-gray-600">
+              Join as a retailer to manage your orders and favourites. Orders are confirmed
+              over WhatsApp — account is optional.
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -185,35 +174,27 @@ export default function RegisterPage() {
                   </div>
                 </div>
               </div>
-            </section>
 
-            <section className="rounded-lg border border-gray-100 bg-gray-50 p-4 space-y-3">
-              <div className="text-sm font-semibold text-gray-900">Email OTP</div>
-              <p className="text-sm text-gray-600">We will send a one-time password to your email.</p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={otpPending}
-                  className="rounded-lg border border-primary-200 px-4 py-2 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary-50 disabled:opacity-50"
-                >
-                  {otpPending ? 'Sending...' : 'Send OTP'}
-                </button>
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Enter OTP</label>
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  className="input-field"
-                  placeholder="6-digit code"
-                />
-              </div>
+              {password.length > 0 && (
+                <ul className="grid gap-1 text-xs text-gray-600">
+                  <li className={passwordRules.length ? 'text-emerald-600' : ''}>
+                    {passwordRules.length ? '✓' : '○'} At least 10 characters
+                  </li>
+                  <li className={passwordRules.lower ? 'text-emerald-600' : ''}>
+                    {passwordRules.lower ? '✓' : '○'} One lowercase letter
+                  </li>
+                  <li className={passwordRules.upper ? 'text-emerald-600' : ''}>
+                    {passwordRules.upper ? '✓' : '○'} One uppercase letter
+                  </li>
+                  <li className={passwordRules.digit ? 'text-emerald-600' : ''}>
+                    {passwordRules.digit ? '✓' : '○'} One digit
+                  </li>
+                </ul>
+              )}
             </section>
 
             <section className="space-y-4">
-              <div className="text-sm font-semibold text-gray-900">Contact & address</div>
+              <div className="text-sm font-semibold text-gray-900">Contact &amp; address</div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">

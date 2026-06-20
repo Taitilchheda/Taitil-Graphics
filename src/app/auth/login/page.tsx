@@ -6,19 +6,21 @@ import Link from 'next/link'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { Eye, EyeOff, Mail, Lock, ShieldCheck, Store } from 'lucide-react'
 
+// Login is password-only for both retailer and admin modes. The OTP service
+// (otp-service-beta.vercel.app) is offline, so we no longer send magic links.
+// The OTP form, "Use OTP instead" toggle, and send-OTP button have been
+// removed; retailers now sign in with the same password they registered
+// with at /auth/register.
+
 function LoginPageContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [otp, setOtp] = useState('')
-  const [linkPending, setLinkPending] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [mode, setMode] = useState<'retailer' | 'admin'>('retailer')
-  const [usePasswordLogin, setUsePasswordLogin] = useState(false)
 
-  const { adminLogin, sendOtp, verifyOtp, loginWithPassword } = useAuth()
+  const { adminLogin, loginWithPassword } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -26,32 +28,15 @@ function LoginPageContent() {
     e.preventDefault()
     setIsLoading(true)
     setError('')
-    setSuccess('')
 
-    let success = false
-    let result: { ok: boolean; error?: string } | undefined
+    let ok = false
     if (mode === 'admin') {
-      success = await adminLogin(email, password)
+      ok = await adminLogin(email, password)
     } else {
-      if (usePasswordLogin) {
-        if (!password) {
-          setError('Enter your password to continue.')
-          setIsLoading(false)
-          return
-        }
-        success = await loginWithPassword(email, password)
-      } else {
-        if (!otp) {
-          setError('Enter the OTP sent to your email.')
-          setIsLoading(false)
-          return
-        }
-        result = await verifyOtp(email, otp, undefined, 'login')
-        success = result.ok
-      }
+      ok = await loginWithPassword(email, password)
     }
 
-    if (success) {
+    if (ok) {
       if (mode === 'admin') {
         router.push('/admin')
       } else {
@@ -60,27 +45,14 @@ function LoginPageContent() {
         router.push(safeNext)
       }
     } else {
-      setError(mode === 'admin' ? 'Invalid credentials. For admin, use your assigned email and password.' : (usePasswordLogin ? 'Invalid email or password.' : (typeof result !== 'undefined' && !result.ok ? (result.error || 'OTP verification failed. Please try again.') : 'OTP verification failed. Please try again.')))
+      setError(
+        mode === 'admin'
+          ? 'Invalid credentials. For admin, use your assigned email and password.'
+          : 'Invalid email or password.',
+      )
     }
 
     setIsLoading(false)
-  }
-
-  const handleSendOtp = async () => {
-    setError('')
-    setSuccess('')
-    if (!email) {
-      setError('Please enter your email first.')
-      return
-    }
-    setLinkPending(true)
-    const ok = await sendOtp(email, 'login')
-    setLinkPending(false)
-    if (!ok) {
-      setError('Unable to send OTP. Please try again.')
-    } else {
-      setSuccess('OTP sent to verified email id.')
-    }
   }
 
   return (
@@ -133,84 +105,34 @@ function LoginPageContent() {
               </div>
             </div>
 
-            {mode === 'retailer' && (
-              <div className="rounded-lg border border-gray-100 bg-gray-50 p-4 space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900">{usePasswordLogin ? 'Password login' : 'Email OTP'}</div>
-                    <p className="text-sm text-gray-600">{usePasswordLogin ? 'Sign in with your account password.' : 'We will send a one-time password to your email.'}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setUsePasswordLogin(!usePasswordLogin)}
-                    className="text-xs font-semibold text-primary-700 hover:text-primary-800"
-                  >
-                    {usePasswordLogin ? 'Use OTP instead' : 'Use password instead'}
-                  </button>
-                </div>
-                {!usePasswordLogin && (
-                  <>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <button
-                        type="button"
-                        onClick={handleSendOtp}
-                        disabled={linkPending}
-                        className="rounded-lg border border-primary-200 px-4 py-2 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary-50 disabled:opacity-50"
-                      >
-                        {linkPending ? 'Sending...' : 'Send OTP'}
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">Enter OTP</label>
-                      <input
-                        type="text"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
-                        className="input-field"
-                        placeholder="6-digit code"
-                      />
-                    </div>
-                  </>
-                )}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-field pl-10 pr-10"
+                  placeholder="Enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
-            )}
-
-            {(mode === 'admin' || usePasswordLogin) && (
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="input-field pl-10 pr-10"
-                    placeholder="Enter your password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
                 {error}
-              </div>
-            )}
-
-            {success && (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg">
-                {success}
               </div>
             )}
 

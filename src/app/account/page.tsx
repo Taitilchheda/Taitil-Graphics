@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/components/providers/AuthProvider'
@@ -6,15 +6,21 @@ import Header from '@/components/layout/Header'
 import { User, Mail, Phone, MapPin, Edit, Save, Trash2, Package, ShieldCheck, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 
+// Password & OTP notes:
+// - Password change uses the current password as authorization
+//   (no OTP — the OTP service is offline).
+// - Account delete uses the current password as authorization too,
+//   via /api/account/delete which expects { confirm: 'DELETE', password }.
+
 export default function AccountPage() {
-  const { user, logout, updateUser, deleteAccount, sendOtpForAccountDelete } = useAuth()
+  const { user, logout, updateUser, deleteAccount } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [deleteOtp, setDeleteOtp] = useState('')
+  const [deletePassword, setDeletePassword] = useState('')
   const [deleteStatus, setDeleteStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-  const [passwordOtp, setPasswordOtp] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordPending, setPasswordPending] = useState(false)
@@ -124,71 +130,41 @@ export default function AccountPage() {
   const handleDelete = async () => {
     if (!user || user.role?.toLowerCase() === 'admin') return
     setDeleteStatus(null)
-    if (!deleteOtp) {
-      setDeleteStatus({ type: 'error', message: 'Enter the OTP sent to your email.' })
+    if (!deletePassword) {
+      setDeleteStatus({ type: 'error', message: 'Enter your password to confirm.' })
       return
     }
     const confirmed = window.confirm('Delete your account permanently? This cannot be undone.')
     if (!confirmed) return
     setIsDeleting(true)
-    const ok = await deleteAccount(deleteOtp)
+    const ok = await deleteAccount(deletePassword)
     setIsDeleting(false)
     if (ok) {
       setDeleteStatus({ type: 'success', message: 'Account deleted successfully.' })
       window.location.href = '/'
     } else {
-      setDeleteStatus({ type: 'error', message: 'Unable to delete account. Check OTP and try again.' })
-    }
-  }
-
-  const handleSendDeleteOtp = async () => {
-    if (!user) return
-    setDeleteStatus(null)
-    const ok = await sendOtpForAccountDelete()
-    if (ok) {
-      setDeleteStatus({ type: 'success', message: 'OTP sent to your email.' })
-    } else {
-      setDeleteStatus({ type: 'error', message: 'Unable to send OTP. Please try again.' })
-    }
-  }
-
-  const handleSendPasswordOtp = async () => {
-    if (!user?.email) return
-    setPasswordStatus(null)
-    setPasswordPending(true)
-    try {
-      const res = await fetch('/api/auth/otp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, purpose: 'password' }),
-      })
-      if (!res.ok) {
-        setPasswordStatus({ type: 'error', message: 'Unable to send OTP. Try again.' })
-      } else {
-        setPasswordStatus({ type: 'success', message: 'OTP sent to your email.' })
-      }
-    } catch (err) {
-      console.error(err)
-      setPasswordStatus({ type: 'error', message: 'Unable to send OTP. Try again.' })
-    } finally {
-      setPasswordPending(false)
+      setDeleteStatus({ type: 'error', message: 'Unable to delete account. Check your password and try again.' })
     }
   }
 
   const handlePasswordUpdate = async () => {
-    if (!user?.token || !user?.email) return
+    if (!user?.token) return
     setPasswordStatus(null)
 
-    if (!newPassword || newPassword.length < 6) {
-      setPasswordStatus({ type: 'error', message: 'Password must be at least 6 characters.' })
+    if (!currentPassword) {
+      setPasswordStatus({ type: 'error', message: 'Enter your current password.' })
+      return
+    }
+    if (!newPassword || newPassword.length < 10) {
+      setPasswordStatus({ type: 'error', message: 'New password must be at least 10 characters.' })
+      return
+    }
+    if (!/[a-z]/.test(newPassword) || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      setPasswordStatus({ type: 'error', message: 'New password must include lowercase, uppercase, and a digit.' })
       return
     }
     if (newPassword !== confirmPassword) {
       setPasswordStatus({ type: 'error', message: 'Passwords do not match.' })
-      return
-    }
-    if (!passwordOtp) {
-      setPasswordStatus({ type: 'error', message: 'Enter the OTP sent to your email.' })
       return
     }
 
@@ -197,16 +173,21 @@ export default function AccountPage() {
       const res = await fetch('/api/account/password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
-        body: JSON.stringify({ email: user.email, otp: passwordOtp, newPassword }),
+        body: JSON.stringify({ currentPassword, newPassword }),
       })
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}))
         setPasswordStatus({ type: 'error', message: payload.error || 'Unable to update password.' })
       } else {
-        setPasswordStatus({ type: 'success', message: 'Password updated successfully.' })
-        setPasswordOtp('')
+        setPasswordStatus({ type: 'success', message: 'Password updated successfully. Please sign in again.' })
+        setCurrentPassword('')
         setNewPassword('')
         setConfirmPassword('')
+        // Force re-login since invalidateUserSessions kills the JWT.
+        setTimeout(() => {
+          logout()
+          window.location.href = '/auth/login'
+        }, 1200)
       }
     } catch (err) {
       console.error(err)
@@ -332,7 +313,7 @@ export default function AccountPage() {
                 <h2 className="text-xl font-semibold text-gray-900">Password & Security</h2>
                 <ShieldCheck className="w-5 h-5 text-primary-600" />
               </div>
-              <p className="text-sm text-gray-600 mb-4">Update your password using an OTP sent to your email.</p>
+              <p className="text-sm text-gray-600 mb-4">Update your password by confirming your current one.</p>
               {passwordStatus && (
                 <div
                   className={`mb-4 rounded-lg border px-4 py-3 text-sm ${passwordStatus.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-700'}`}
@@ -341,25 +322,17 @@ export default function AccountPage() {
                 </div>
               )}
               <div className="space-y-4">
-                <button
-                  type="button"
-                  onClick={handleSendPasswordOtp}
-                  disabled={passwordPending}
-                  className="inline-flex items-center justify-center rounded-lg border border-primary-200 px-4 py-2 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary-50 disabled:opacity-50"
-                >
-                  {passwordPending ? 'Sending OTP...' : 'Send OTP'}
-                </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Current password</label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="input-field"
+                    placeholder="Current password"
+                  />
+                </div>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">OTP</label>
-                    <input
-                      type="text"
-                      value={passwordOtp}
-                      onChange={(e) => setPasswordOtp(e.target.value)}
-                      className="input-field"
-                      placeholder="Enter OTP"
-                    />
-                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">New password</label>
                     <input
@@ -381,6 +354,9 @@ export default function AccountPage() {
                     />
                   </div>
                 </div>
+                <p className="text-xs text-gray-500">
+                  10+ characters with at least one lowercase letter, one uppercase letter, and one digit.
+                </p>
                 <button
                   type="button"
                   onClick={handlePasswordUpdate}
@@ -463,7 +439,7 @@ export default function AccountPage() {
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
               <div className="space-y-2">
                 <h3 className="text-lg font-semibold text-gray-900">Delete account</h3>
-                <p className="text-sm text-gray-600">This will permanently remove your account and data. This action cannot be undone.</p>
+                <p className="text-sm text-gray-600">This will permanently remove your account and data. Type your password to confirm.</p>
               </div>
               <div className="mt-4 space-y-3">
                 {deleteStatus && (
@@ -473,19 +449,12 @@ export default function AccountPage() {
                     {deleteStatus.message}
                   </div>
                 )}
-                <button
-                  type="button"
-                  onClick={handleSendDeleteOtp}
-                  className="w-full rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
-                >
-                  Send OTP to delete
-                </button>
                 <input
-                  type="text"
-                  value={deleteOtp}
-                  onChange={(e) => setDeleteOtp(e.target.value)}
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
                   className="input-field"
-                  placeholder="Enter OTP"
+                  placeholder="Your password"
                 />
               </div>
               <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -494,6 +463,7 @@ export default function AccountPage() {
                   onClick={() => {
                     setShowDeleteModal(false)
                     setDeleteStatus(null)
+                    setDeletePassword('')
                   }}
                   className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                 >
