@@ -112,7 +112,7 @@ export async function GET(
     .replace(/{{sgst}}/g, `INR ${Math.round(tax.sgst / 100).toLocaleString('en-IN')}`)
     .replace(/{{igst}}/g, `INR ${Math.round(tax.igst / 100).toLocaleString('en-IN')}`)
     .replace(/{{total}}/g, `INR ${Math.round(order.totalCents / 100).toLocaleString('en-IN')}`)
-    .replace(/{{paymentMethod}}/g, escapeHtml(order.paymentProvider || 'Razorpay'))
+    .replace(/{{paymentMethod}}/g, escapeHtml('Manual / WhatsApp'))
     .replace(/{{paymentStatus}}/g, escapeHtml(order.paymentStatus))
 
   return new NextResponse(html, {

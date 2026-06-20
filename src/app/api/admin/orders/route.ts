@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { jsonWithCache } from '@/lib/response-cache'
 import { logAdminAction } from '@/lib/audit'
-import { sendTransactionalEmail, emailTemplates } from '@/lib/mailer'
 import { requireAuth } from '@/lib/server-auth'
 
 const updateSchema = z.object({
@@ -49,18 +48,9 @@ export async function PATCH(request: Request) {
     include: { user: true },
   })
 
-  await logAdminAction(auth.id, "order-status", updated.id, { status: parsed.data.status })
+  await logAdminAction(auth.id, 'order-status', updated.id, { status: parsed.data.status })
 
-  if (updated.user?.email) {
-    if (parsed.data.status === 'SHIPPED') {
-      const template = emailTemplates.shipped(updated.user.name || updated.user.email, updated.id)
-      await sendTransactionalEmail(updated.user.email, 'order-shipped', template.subject, template.html, updated.id)
-    }
-    if (parsed.data.status === 'DELIVERED') {
-      const template = emailTemplates.delivered(updated.user.name || updated.user.email, updated.id)
-      await sendTransactionalEmail(updated.user.email, 'order-delivered', template.subject, template.html, updated.id)
-    }
-  }
-
+  // Note: emails and shipping notifications are no longer automated.
+  // Admin should call the customer from /admin/orders to share status.
   return NextResponse.json({ order: updated })
 }

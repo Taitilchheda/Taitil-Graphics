@@ -1,9 +1,11 @@
 'use client'
 
 import { useCart } from '@/components/providers/CartProvider'
-import { useRouter } from 'next/navigation'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { useAnalytics } from '@/components/providers/AnalyticsProvider'
 import { useCatalog } from '@/components/providers/CatalogProvider'
+import { buildWhatsAppLink } from '@/lib/whatsapp'
+import { ensureCsrfToken } from '@/lib/csrf-client'
 import { Heart, ShoppingCart, Star, ArrowRight, MessageCircle } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -49,8 +51,8 @@ const inrSymbol = String.fromCharCode(8377)
 const formatInr = (cents: number) => `${inrSymbol}${Math.round(cents / 100).toLocaleString('en-IN')}`
 
 export default function ProductCard({ product, showQuickAdd = true, showBuyNow = true, showDescription = true, className = '' }: ProductCardProps) {
-  const router = useRouter()
   const { addToCart, toggleLike, isLiked } = useCart()
+  const { user } = useAuth()
   const { logEvent } = useAnalytics()
   const { updateInventory } = useCatalog()
 
@@ -67,7 +69,7 @@ export default function ProductCard({ product, showQuickAdd = true, showBuyNow =
   const showPricing = isPhysical && (listingCents > 0 || mrpCents > 0)
   const isOutOfStock = isPhysical && typeof product.stock === "number" && product.stock <= 0
 
-  const handleBuyNow = (e: React.MouseEvent) => {
+  const handleBuyNow = async (e: React.MouseEvent) => {
     if (isOutOfStock) {
       toast.error('Out of stock')
       return
@@ -78,10 +80,54 @@ export default function ProductCard({ product, showQuickAdd = true, showBuyNow =
       toast.error(isPhysical ? 'Price not set for this product yet.' : 'This service is available via WhatsApp only.')
       return
     }
-    addToCart(product)
-    updateInventory(product.id, -1)
-    logEvent({ type: 'cart', productId: product.id, categoryId: product.category, label: 'card-buy-now' })
-    router.push('/checkout')
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://taitilgraphics.com'
+    const productLink = `${origin}/products/${product.id}`
+    const message = [
+      `Hi! I'd like to buy: ${product.name}`,
+      listingCents > 0 ? `Listing price: ${formatInr(listingCents)}` : null,
+      `Link: ${productLink}`,
+      '',
+      'Please confirm availability and share final pricing.',
+    ]
+      .filter(Boolean)
+      .join('\n')
+
+    const whatsappUrl = buildWhatsAppLink({ message })
+    window.open(whatsappUrl, '_blank')
+
+    logEvent({
+      type: 'inquiry',
+      productId: product.id,
+      categoryId: product.category,
+      label: 'card-buy-now-whatsapp',
+    })
+
+    // Capture the enquiry in /admin/leads so admin can follow up if the
+    // WhatsApp chat doesn't open. Skipped for anonymous clicks (we don't
+    // have a valid name/phone, and we'd rather not create junk rows).
+    if (user && user.name && user.phone) {
+      try {
+        const csrfToken = await ensureCsrfToken()
+        await fetch('/api/leads', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+          },
+          body: JSON.stringify({
+            productId: product.id,
+            name: user.name,
+            phone: user.phone,
+            requirement: `Buy Now: ${product.name}${listingCents > 0 ? ` @ ${formatInr(listingCents)}` : ''}`,
+            source: 'buy-now',
+          }),
+        })
+      } catch (err) {
+        console.error('[ProductCard] failed to record buy-now lead', err)
+      }
+    }
   }
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -233,7 +279,7 @@ export default function ProductCard({ product, showQuickAdd = true, showBuyNow =
                   className="w-full border border-primary-200 text-primary-700 hover:bg-primary-50 px-3 py-2 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  <span>WhatsApp (Bulk Orders)</span>
+                  <span>Bulk order inquiry</span>
                 </button>
               ) : null}
             </>

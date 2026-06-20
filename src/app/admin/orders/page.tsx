@@ -1,7 +1,8 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { MessageCircle } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import { useAuth } from '@/components/providers/AuthProvider'
@@ -37,17 +38,6 @@ type Order = {
   taxCents: number
   createdAt: string
   paidAt?: string | null
-  refundedAt?: string | null
-  refundId?: string | null
-  razorpayOrderId?: string | null
-  razorpayPaymentId?: string | null
-  shippingProvider?: string | null
-  shippingStatus?: string | null
-  trackingId?: string | null
-  trackingUrl?: string | null
-  labelUrl?: string | null
-  pickupRequestId?: string | null
-  shippingError?: string | null
   user: { email: string }
   items: OrderItem[]
   address?: OrderAddress | null
@@ -60,9 +50,6 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [paymentFilter, setPaymentFilter] = useState<string>('ALL')
-  const [refunding, setRefunding] = useState<string | null>(null)
-  const [shippingAction, setShippingAction] = useState<string | null>(null)
-  const [shippingError, setShippingError] = useState<string | null>(null)
   const [exportFrom, setExportFrom] = useState<string>('')
   const [exportTo, setExportTo] = useState<string>('')
   const [exportStatus, setExportStatus] = useState<string>('')
@@ -131,8 +118,6 @@ export default function OrdersPage() {
       const haystack = [
         order.id,
         order.user?.email,
-        order.razorpayPaymentId,
-        order.razorpayOrderId,
         order.address?.fullName,
       ]
         .filter(Boolean)
@@ -175,82 +160,6 @@ export default function OrdersPage() {
     win.document.open()
     win.document.write(html)
     win.document.close()
-  }
-
-  const openShippingLabel = async (orderId: string) => {
-    if (!user?.token) return
-    setShippingAction(orderId)
-    setShippingError(null)
-    try {
-      const res = await fetch(`/api/admin/shipping/label?orderId=${orderId}`, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      })
-      if (!res.ok) {
-        const payload = await res.json().catch(() => ({}))
-        throw new Error(payload.error || 'Failed to fetch label')
-      }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      window.open(url, '_blank')
-      setTimeout(() => URL.revokeObjectURL(url), 5000)
-    } catch (err: any) {
-      setShippingError(err?.message || 'Failed to fetch label')
-    } finally {
-      setShippingAction(null)
-    }
-  }
-
-  const handleShippingAction = async (endpoint: string, orderId: string) => {
-    if (!user?.token) return
-    setShippingAction(orderId)
-    setShippingError(null)
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({ orderId }),
-      })
-      const payload = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        throw new Error(payload.error || 'Shipping action failed')
-      }
-      if (payload.order) {
-        setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...payload.order } : o)))
-      }
-    } catch (err: any) {
-      setShippingError(err?.message || 'Shipping action failed')
-    } finally {
-      setShippingAction(null)
-    }
-  }
-
-  const issueRefund = async (orderId: string, amountCents?: number) => {
-    if (!user?.token) return
-    const confirmed = window.confirm('Issue refund for this order?')
-    if (!confirmed) return
-    setRefunding(orderId)
-    try {
-      const res = await fetch('/api/admin/refunds', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({ orderId, amountCents }),
-      })
-      if (res.ok) {
-        const refreshed = await fetch('/api/admin/orders', {
-          headers: { Authorization: `Bearer ${user.token}` },
-        })
-        const data = await refreshed.json()
-        setOrders(data.orders || [])
-      }
-    } finally {
-      setRefunding(null)
-    }
   }
 
   const setQuickRange = (days: number) => {
@@ -313,7 +222,7 @@ export default function OrdersPage() {
     )
   }
 
-return (
+  return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -324,7 +233,7 @@ return (
                 Back to dashboard
               </Link>
               <h1 className="text-3xl font-bold text-gray-900">Manage Orders</h1>
-              <p className="text-gray-600">Track order flow, payment status, and shipments.</p>
+              <p className="text-gray-600">Update order status, share invoices, and message customers on WhatsApp.</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="inline-flex rounded-full border border-gray-200 bg-white p-1 text-xs">
@@ -344,7 +253,7 @@ return (
               <div className="w-full sm:w-72">
                 <input
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-                  placeholder="Search order ID, customer, payment ID"
+                  placeholder="Search order ID, customer"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -403,12 +312,6 @@ return (
 
         {activeView === 'orders' && (
           <>
-        {shippingError ? (
-          <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">
-            {shippingError}
-          </div>
-        ) : null}
-
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -417,15 +320,15 @@ return (
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
-                <div className="text-xs text-gray-500">Pending labels</div>
+                <div className="text-xs text-gray-500">Pending</div>
                 <div className="text-xl font-semibold text-gray-900">{statusCounts['PENDING'] || 0}</div>
               </div>
               <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
-                <div className="text-xs text-gray-500">Pending handover</div>
+                <div className="text-xs text-gray-500">Paid (awaiting fulfilment)</div>
                 <div className="text-xl font-semibold text-gray-900">{paidCount}</div>
               </div>
               <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
-                <div className="text-xs text-gray-500">In transit</div>
+                <div className="text-xs text-gray-500">In transit / delivered</div>
                 <div className="text-xl font-semibold text-gray-900">{statusCounts['SHIPPED'] || 0}</div>
               </div>
               <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
@@ -480,12 +383,12 @@ return (
           </div>
         </div>
 
-                <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden text-sm">
+        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden text-sm">
           <div className="grid grid-cols-12 gap-2 bg-gray-50 text-[11px] font-semibold uppercase tracking-wide text-gray-500 px-4 py-3">
             <div className="col-span-3">Order ID</div>
             <div className="col-span-3">Product information</div>
             <div className="col-span-2">Amount</div>
-            <div className="col-span-2">Shipping</div>
+            <div className="col-span-2">Address</div>
             <div className="col-span-2 text-right">Actions</div>
           </div>
           <div className="divide-y divide-gray-100">
@@ -495,10 +398,6 @@ return (
               const primaryItem = order.items[0]
               const itemCount = order.items.length
               const isPaid = order.paymentStatus === 'PAID'
-              const hasPhysical = order.items.some((item) => item.product?.type !== 'SERVICE')
-              const canCreateShipment = isPaid && hasPhysical && !order.trackingId
-              const canTrack = hasPhysical && !!order.trackingId
-              const canPickup = hasPhysical && !!order.trackingId
 
               return (
                 <div key={order.id} className="grid grid-cols-12 gap-2 px-4 py-4 hover:bg-gray-50/70 transition-colors">
@@ -515,18 +414,18 @@ return (
                   <div className="col-span-2 text-xs text-gray-700">
                     <div className="text-base font-semibold text-gray-900">{inrSymbol}{total}</div>
                     <div className={`mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{order.paymentStatus}</div>
-                    {order.paidAt ? <div className="text-[11px] text-gray-500">Paid {new Date(order.paidAt).toLocaleDateString('en-IN')}</div> : null}
                   </div>
                   <div className="col-span-2 text-xs text-gray-600 space-y-1">
-                    <div className="text-gray-900 font-medium">{hasPhysical ? (order.shippingStatus || 'Not shipped') : 'Service order'}</div>
-                    {order.trackingId ? (
-                      <div className="text-[11px] text-gray-500">AWB: {order.trackingId}</div>
-                    ) : null}
-                    {order.trackingUrl ? (
-                      <a className="text-[11px] text-primary-600 hover:text-primary-700" href={order.trackingUrl} target="_blank" rel="noreferrer">
-                        Track shipment
-                      </a>
-                    ) : null}
+                    {order.address ? (
+                      <>
+                        <div className="text-gray-900 font-medium">{order.address.fullName}</div>
+                        <div>{order.address.line1}</div>
+                        <div>{order.address.city}, {order.address.state} {order.address.postal}</div>
+                        {order.address.phone ? <div className="text-primary-700">{order.address.phone}</div> : null}
+                      </>
+                    ) : (
+                      <div className="text-gray-500">No address</div>
+                    )}
                   </div>
                   <div className="col-span-2 flex flex-col items-end gap-2">
                     <select
@@ -541,13 +440,12 @@ return (
                       ))}
                     </select>
                     <div className="grid w-full gap-2">
-                      <div className="text-[10px] uppercase tracking-wide text-gray-400">Shipment actions</div>
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={() => openDocument(order.id, 'bill')}
                           className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
                         >
-                          Bill
+                          Invoice
                         </button>
                         <button
                           onClick={() => openDocument(order.id, 'label')}
@@ -557,62 +455,18 @@ return (
                         </button>
                       </div>
                       <button
-                        onClick={() => openShippingLabel(order.id)}
-                        className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                        disabled={!canTrack || shippingAction === order.id}
+                        onClick={() => handleWhatsAppUpdate(order)}
+                        className="inline-flex items-center justify-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
                       >
-                        Delhivery label
+                        <MessageCircle className="h-3 w-3" /> WhatsApp update
                       </button>
-                      <button
-                        onClick={() => handleShippingAction('/api/admin/shipping/create', order.id)}
-                        className={`rounded-md border px-2 py-1 text-xs font-semibold ${canCreateShipment ? 'border-primary-200 bg-primary-600 text-white hover:bg-primary-700' : 'border-gray-200 text-gray-400'}`}
-                        disabled={!canCreateShipment || shippingAction === order.id}
-                      >
-                        {order.trackingId ? 'AWB created' : 'Create shipment'}
-                      </button>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => handleShippingAction('/api/admin/shipping/track', order.id)}
-                          className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                          disabled={!canTrack || shippingAction === order.id}
-                        >
-                          Track
-                        </button>
-                        <button
-                          onClick={() => handleShippingAction('/api/admin/shipping/pickup', order.id)}
-                          className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                          disabled={!canPickup || shippingAction === order.id}
-                        >
-                          Request pickup
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => handleWhatsAppUpdate(order)}
-                          className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                        >
-                          WhatsApp update
-                        </button>
-                        <button
-                          onClick={() => issueRefund(order.id)}
-                          className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                          disabled={refunding === order.id || !isPaid}
-                        >
-                          {refunding === order.id ? 'Refunding' : 'Issue refund'}
-                        </button>
-                      </div>
-                      {order.shippingError ? (
-                        <div className="rounded-md border border-red-100 bg-red-50 px-2 py-1 text-[11px] text-red-700">
-                          {order.shippingError}
-                        </div>
-                      ) : null}
                     </div>
                     {saving === order.id ? <span className="text-[11px] text-gray-400">Saving...</span> : null}
                   </div>
                 </div>
               )
             })}
-{filteredOrders.length === 0 ? (
+            {filteredOrders.length === 0 ? (
               <div className="px-4 py-10 text-center text-sm text-gray-500">No orders to display.</div>
             ) : null}
           </div>

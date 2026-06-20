@@ -10,6 +10,8 @@ import { useCart } from '@/components/providers/CartProvider'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { useCatalog } from '@/components/providers/CatalogProvider'
 import { useAnalytics } from '@/components/providers/AnalyticsProvider'
+import { buildWhatsAppLink } from '@/lib/whatsapp'
+import { ensureCsrfToken } from '@/lib/csrf-client'
 import { MessageCircle, ArrowLeft, Heart, ShoppingCart, Check, Star } from 'lucide-react'
 
 export default function ProductPage() {
@@ -166,30 +168,70 @@ export default function ProductPage() {
       `Type: ${product.subcategory || product.category}\n` +
       `Product: ${productLink}\n` +
       `Please share bulk pricing and MOQ.`
-    const whatsappUrl = `https://wa.me/917666247666?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, '_blank')
+    window.open(buildWhatsAppLink({ message }), '_blank')
     logEvent({ type: 'inquiry', productId: product.id, categoryId: product.category, label: 'product-whatsapp' })
   }
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (!product || !isPriced || isOutOfStock) return
 
-    const productForCart = {
-      id: product.id,
-      name: product.name,
-      image: gallery[selectedIndex] || product.image,
-      category: product.category,
-      description: product.description,
-      priceCents: mrpCents,
-      listingPriceCents: listingCents,
-      discountPercent,
-      customizations: selectedVariants,
-    }
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://taitilgraphics.com'
+    const productLink = `${origin}/products/${product.id}`
+    const variantLines = Object.entries(selectedVariants)
+      .map(([label, value]) => `  - ${label}: ${value}`)
+      .join('\n')
 
-    addToCart(productForCart, 1)
-    updateInventory(product.id, -1)
-    logEvent({ type: 'cart', productId: product.id, categoryId: product.category, subcategoryId: product.subcategory, quantity: 1, label: 'product-buy-now' })
-    window.location.href = '/checkout'
+    const message = [
+      `Hi! I'd like to buy: ${product.name}`,
+      listingCents > 0 ? `Listing price: ${inrSymbol}${Math.round(listingCents / 100).toLocaleString('en-IN')}` : null,
+      variantLines ? `Options:\n${variantLines}` : null,
+      `Link: ${productLink}`,
+      '',
+      'Please confirm availability and share final pricing.',
+    ]
+      .filter(Boolean)
+      .join('\n')
+
+    window.open(buildWhatsAppLink({ message }), '_blank')
+
+    logEvent({
+      type: 'inquiry',
+      productId: product.id,
+      categoryId: product.category,
+      subcategoryId: product.subcategory,
+      label: 'product-buy-now-whatsapp',
+    })
+
+    // Capture the enquiry in /admin/leads so admin can follow up if the
+    // WhatsApp chat doesn't open. Skipped for anonymous clicks.
+    if (user && user.name && user.phone) {
+      try {
+        const csrfToken = await ensureCsrfToken()
+        await fetch('/api/leads', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+          },
+          body: JSON.stringify({
+            productId: product.id,
+            name: user.name,
+            phone: user.phone,
+            requirement: [
+              `Buy Now: ${product.name}`,
+              listingCents > 0 ? `Listing: ${inrSymbol}${Math.round(listingCents / 100).toLocaleString('en-IN')}` : null,
+              variantLines ? `Options:\n${variantLines}` : null,
+            ]
+              .filter(Boolean)
+              .join('\n'),
+            source: 'buy-now',
+          }),
+        })
+      } catch (err) {
+        console.error('[product page] failed to record buy-now lead', err)
+      }
+    }
   }
 
   const handleAddToCart = () => {
@@ -222,9 +264,14 @@ export default function ProductPage() {
     setLeadSubmitting(true)
     setLeadMessage(null)
     try {
+      const csrfToken = await ensureCsrfToken()
       const res = await fetch('/api/leads', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+        },
         body: JSON.stringify({
           productId: product.id,
           name: leadForm.name,
@@ -248,8 +295,7 @@ Requirement: ${leadForm.requirement || '-'}
 Budget: ${leadForm.budgetRange || '-'}
 Timeline: ${leadForm.timeline || '-'}
 Contact: ${leadForm.name} (${leadForm.phone})`
-      const whatsappUrl = `https://wa.me/917666247666?text=${encodeURIComponent(message)}`
-      window.open(whatsappUrl, '_blank')
+      window.open(buildWhatsAppLink({ message }), '_blank')
       logEvent({ type: 'inquiry', productId: product.id, categoryId: product.category, label: 'service-whatsapp' })
       setLeadMessage('Thanks! Your request was submitted. We will contact you soon.')
     } catch (err: any) {

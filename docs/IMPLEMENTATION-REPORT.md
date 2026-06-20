@@ -12,7 +12,7 @@ This report summarizes what is fully implemented and working in the web app **ba
 ### 1) Authentication & Accounts
 - **Customer registration** via `/api/auth/register` (Prisma + bcrypt + JWT).
 - **Login** via `/api/auth/login` with JWT token issuance.
-- **Admin login** auto-bootstraps admin user from `ADMIN_EMAIL` + `ADMIN_PASSWORD` env values.
+- **Admin login** is gated; admin signup is disabled in the UI. Provision the admin user by running `node --env-file-if-exists=.env scripts/create-admin.js` (which upserts `admin@taitil.graphics` with `role: 'ADMIN'`) or by a direct MongoDB insert.
 - **JWT auth** enforced on protected routes via `Authorization: Bearer <token>`.
 - **Account page** (`/account`) with editable profile fields (name, email, phone, address).
 
@@ -24,8 +24,8 @@ This report summarizes what is fully implemented and working in the web app **ba
 
 ### 3) Cart & Checkout (Customer)
 - **Cart** (`/cart`) with add/remove/qty updates and pricing.
-- **Checkout** (`/checkout`) with address form and Razorpay initiation.
-- **Order creation** happens server-side at `/api/checkout` and writes to Prisma DB.
+- **Checkout** (`/checkout`) is a "request a call back" form: it creates a `Lead` and returns a pre-filled WhatsApp deep link. Pricing and delivery are confirmed manually over WhatsApp / phone — no automated payment.
+- **Order/Lead creation** happens server-side at `/api/checkout` and writes to Prisma DB.
 - **Order confirmation** page exists at `/order/confirmation`.
 
 ### 4) Orders (Customer)
@@ -50,18 +50,14 @@ This report summarizes what is fully implemented and working in the web app **ba
 
 ## ?? Implemented but Depends on Configuration
 
-### Razorpay Payments
-- Fully integrated in `/api/checkout` + `/api/payments/razorpay/verify` + webhook handler.
-- Requires:
-  - `RAZORPAY_KEY_ID`
-  - `RAZORPAY_KEY_SECRET`
-  - `RAZORPAY_WEBHOOK_SECRET`
+### Ordering & Payments
+- Online payments are not in scope for this deployment. Orders are handled over WhatsApp / phone — pricing and delivery are confirmed manually.
+- The Razorpay integration that previously lived under `src/app/api/payments/razorpay/*` has been removed. If you ever want to add online payments back, see the git history for the prior wiring.
 
-### Database (PostgreSQL / Neon)
+### Database (MongoDB Atlas)
 - All core features depend on Prisma DB being configured and reachable.
 - Required env:
   - `DATABASE_URL`
-  - `DIRECT_URL`
 
 ---
 
@@ -92,7 +88,7 @@ This report summarizes what is fully implemented and working in the web app **ba
 
 ## Notes & Recommendations
 
-1. **Confirm production env values** before release (Razorpay + DB).
+1. **Confirm production env values** before release (DB + WhatsApp number + JWT secret).
 2. **Run Prisma migrations** after any schema changes.
 3. **Enable seed data** for empty catalogs if needed (already supported in `/api/products`).
 4. If you want **real shipping tracking**, a carrier integration is needed.

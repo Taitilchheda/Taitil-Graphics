@@ -49,7 +49,10 @@ NEXTAUTH_URL=https://yourdomain.com
 # Email Service (SendGrid example)
 EMAIL_API_KEY=your_sendgrid_api_key
 FROM_EMAIL=noreply@yourdomain.com
-ADMIN_EMAIL=admin@yourdomain.com
+
+# Admin user: provision via `scripts/create-admin.js` after first deploy.
+# Do NOT set ADMIN_EMAIL here — admin signup is disabled and the
+# script hardcodes the admin email.
 
 # WhatsApp Business
 WHATSAPP_PHONE_NUMBER=+1234567890

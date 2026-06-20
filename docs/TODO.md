@@ -31,7 +31,8 @@ This list consolidates requirements from the PRD, Product Design Document, and T
 - [ ] Add confirmation and order receipt flow.
 
 ### Payments & refunds
-- [ ] Integrate payment gateway (Razorpay/Stripe).
+- Online payments are out of scope — orders are handled manually over WhatsApp / phone. Keep this section if/when a payment gateway is reintroduced.
+- [ ] Integrate payment gateway (Razorpay/Stripe) — only if/when you want to automate payment.
 - [ ] Implement payment status handling and webhooks.
 - [ ] Add refund initiation and status tracking.
 - [ ] Log and surface payment failures.

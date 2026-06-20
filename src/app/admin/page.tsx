@@ -22,8 +22,7 @@ type DashboardTotals = {
   orders: number
   paidOrders: number
   revenueCents: number
-  refunds: number
-  refundCents: number
+  newLeads: number
 }
 
 type DashboardProductStat = {
@@ -45,9 +44,8 @@ type DashboardData = {
     inquiries: number
     orders: number
     revenueCents: number
-    refunds: number
-    refundCents: number
     unitsSold: number
+    leads: number
   }[]
 }
 
@@ -168,8 +166,7 @@ export default function AdminDashboardPage() {
       orders: dashboardData?.totals.orders ?? 0,
       paidOrders: dashboardData?.totals.paidOrders ?? 0,
       revenueCents: dashboardData?.totals.revenueCents ?? 0,
-      refunds: dashboardData?.totals.refunds ?? 0,
-      refundCents: dashboardData?.totals.refundCents ?? 0,
+      newLeads: dashboardData?.totals.newLeads ?? 0,
     }),
     [dashboardData?.totals]
   )
@@ -199,11 +196,10 @@ export default function AdminDashboardPage() {
     [timeSeries]
   )
 
-  const refundsSeries = useMemo(
+  const leadsSeries = useMemo(
     () => ({
       labels: timeSeries.map((point) => point.date.slice(5)),
-      refunds: timeSeries.map((point) => point.refunds),
-      amounts: timeSeries.map((point) => Math.round(point.refundCents / 100)),
+      leads: timeSeries.map((point) => point.leads ?? 0),
     }),
     [timeSeries]
   )
@@ -365,10 +361,15 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <div className="border border-gray-100 rounded-xl p-4 space-y-2">
-              <h3 className="font-semibold text-gray-900">Refunds</h3>
-              <p className="text-sm text-gray-600">Refunded orders: {orderTotals.refunds}</p>
-              <p className="text-sm text-gray-600">Refund amount: INR {Math.round(orderTotals.refundCents / 100).toLocaleString('en-IN')}</p>
-              <p className="text-xs text-gray-500">Data updates when orders are marked refunded in Razorpay.</p>
+              <h3 className="font-semibold text-gray-900">Open enquiries</h3>
+              <p className="text-sm text-gray-600">New leads awaiting your call back: <strong>{orderTotals.newLeads}</strong></p>
+              <p className="text-xs text-gray-500">
+                Each checkout / contact form creates a Lead. Call them within one business hour to confirm
+                pricing and delivery.
+              </p>
+              <Link href="/admin/leads" className="inline-block text-xs font-semibold text-primary-700 hover:text-primary-800">
+                Open leads →
+              </Link>
             </div>
           </div>
         </section>
@@ -433,17 +434,33 @@ export default function AdminDashboardPage() {
           </div>
         </section>
 
-        <section id="refund-trends" className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
+        <section id="leads-trends" className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500">Refunds</p>
-              <h2 className="text-xl font-semibold text-gray-900">Refund trends (30 days)</h2>
-              <p className="text-gray-600 text-sm">Refund volume and amount by day.</p>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Leads</p>
+              <h2 className="text-xl font-semibold text-gray-900">Enquiry trends (30 days)</h2>
+              <p className="text-gray-600 text-sm">Daily inbound enquiries from checkout / contact forms.</p>
             </div>
+            <Link href="/admin/leads" className="text-sm text-primary-700 hover:text-primary-800">Open leads</Link>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <ChartCard title="Refunds" subtitle="Daily refunds" data={refundsSeries.refunds} labels={refundsSeries.labels} color="#ef4444" />
-            <ChartCard title="Refund amount (INR)" subtitle="Daily refund amount" data={refundsSeries.amounts} labels={refundsSeries.labels} color="#f97316" />
+            <ChartCard title="Leads" subtitle="Daily enquiries" data={leadsSeries.leads} labels={leadsSeries.labels} color="#0ea5e9" />
+            <div className="border border-gray-100 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Pipeline</p>
+                  <h3 className="text-lg font-semibold text-gray-900">Convert enquiries</h3>
+                </div>
+                <div className="text-sm font-semibold text-gray-900">{orderTotals.newLeads}</div>
+              </div>
+              <p className="text-sm text-gray-600">
+                Open the leads tab, give the customer a call within the hour, and update the Lead status to
+                <code className="mx-1 rounded bg-gray-100 px-1.5 py-0.5 text-xs">CONTACTED</code> once you reach them.
+              </p>
+              <Link href="/admin/leads" className="inline-block text-xs font-semibold text-primary-700 hover:text-primary-800">
+                View all leads →
+              </Link>
+            </div>
           </div>
         </section>
 

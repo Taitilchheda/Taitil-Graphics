@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/Header'
 import { useAuth } from '@/components/providers/AuthProvider'
-import { ArrowLeft, Package, Truck, CheckCircle, Clock } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Phone, Package, Clock } from 'lucide-react'
 
 type OrderItem = {
   id: string
@@ -31,13 +31,9 @@ type Order = {
     city?: string | null
     state?: string | null
     postal?: string | null
+    phone?: string | null
   } | null
   items: OrderItem[]
-  shippingStatus?: string | null
-  trackingId?: string | null
-  trackingUrl?: string | null
-  trackingHistory?: any | null
-  shipmentUpdatedAt?: string | null
 }
 
 const statusBadge = (status: string) => {
@@ -51,63 +47,10 @@ const statusBadge = (status: string) => {
 
 const statusIcon = (status: string) => {
   const normalized = status.toUpperCase()
-  if (normalized === 'DELIVERED') return CheckCircle
-  if (normalized === 'SHIPPED') return Truck
+  if (normalized === 'DELIVERED') return Package
+  if (normalized === 'SHIPPED') return Package
   if (normalized === 'PAID') return Package
   return Clock
-}
-
-const extractScans = (history: any) => {
-  const shipment =
-    history?.ShipmentData?.[0]?.Shipment ||
-    history?.Shipment ||
-    history?.data?.Shipment ||
-    null
-  const scans = shipment?.Scans || shipment?.ScanDetail || history?.Scans || history?.ScanDetail
-  if (!scans) return []
-  const arr = Array.isArray(scans) ? scans : [scans]
-  return arr.map((scan) => scan?.ScanDetail ?? scan).filter(Boolean)
-}
-
-const getTrackingSummary = (history: any) => {
-  if (!history) return { scans: [] as any[] }
-  const shipment =
-    history?.ShipmentData?.[0]?.Shipment ||
-    history?.Shipment ||
-    history?.data?.Shipment ||
-    null
-  const status =
-    shipment?.Status?.Status ||
-    shipment?.Status?.StatusCode ||
-    history?.status ||
-    history?.Status ||
-    undefined
-  const scans = extractScans(history)
-  const sorted = scans
-    .slice()
-    .sort((a, b) => {
-      const at = new Date(a?.ScanDateTime || a?.StatusDateTime || a?.Time || a?.Timestamp || 0).getTime()
-      const bt = new Date(b?.ScanDateTime || b?.StatusDateTime || b?.Time || b?.Timestamp || 0).getTime()
-      return at - bt
-    })
-  const last = sorted[sorted.length - 1]
-  const location = last?.Location || last?.City || last?.State || last?.Scan || last?.Status
-  const time = last?.ScanDateTime || last?.StatusDateTime || last?.Time || last?.Timestamp
-  const lat = Number(last?.Latitude || last?.Lat || last?.lat)
-  const lng = Number(last?.Longitude || last?.Lng || last?.lng || last?.Long)
-  return {
-    status,
-    location,
-    time,
-    lat: Number.isFinite(lat) ? lat : undefined,
-    lng: Number.isFinite(lng) ? lng : undefined,
-    scans: sorted.slice(-4).reverse(),
-  }
-}
-
-const getMapEmbedUrl = (lat?: number, lng?: number) => {
-  if (!lat || !lng) return null
-  return `https://maps.google.com/maps?q=${lat},${lng}&z=12&output=embed`
 }
 
 export default function OrdersPage() {
@@ -115,17 +58,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [cancellingId, setCancellingId] = useState<string | null>(null)
-  const [actionMessage, setActionMessage] = useState('')
-  const [trackingLoadingId, setTrackingLoadingId] = useState<string | null>(null)
-  const [trackingErrors, setTrackingErrors] = useState<Record<string, string>>({})
   const inrSymbol = String.fromCharCode(8377)
-
-  const totalOrders = orders.length
-  const paidOrders = useMemo(
-    () => orders.filter((order) => order.paymentStatus === 'PAID').length,
-    [orders],
-  )
 
   useEffect(() => {
     if (!user?.token) return
@@ -155,58 +88,6 @@ export default function OrdersPage() {
     load()
   }, [user?.token])
 
-  const canCancel = (order: Order) => {
-    const createdAt = new Date(order.createdAt).getTime()
-    const withinWindow = Date.now() - createdAt <= 24 * 60 * 60 * 1000
-    const blocked = ['SHIPPED', 'DELIVERED', 'CANCELLED']
-    return withinWindow && !blocked.includes(order.status?.toUpperCase())
-  }
-
-  const handleCancel = async (orderId: string) => {
-    if (!user?.token) return
-    setCancellingId(orderId)
-    setActionMessage('')
-    try {
-      const res = await fetch(`/api/account/orders/${orderId}/cancel`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${user.token}` },
-      })
-      if (!res.ok) {
-        const payload = await res.json().catch(() => ({}))
-        throw new Error(payload.error || 'Unable to cancel order')
-      }
-      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: 'CANCELLED' } : o)))
-      setActionMessage('Order cancelled successfully. Refunds are processed within 3-5 business days if applicable.')
-    } catch (err: any) {
-      setActionMessage(err.message || 'Unable to cancel order')
-    } finally {
-      setCancellingId(null)
-    }
-  }
-
-  const handleTrack = async (orderId: string) => {
-    if (!user?.token) return
-    setTrackingLoadingId(orderId)
-    setTrackingErrors((prev) => ({ ...prev, [orderId]: '' }))
-    try {
-      const res = await fetch(`/api/account/orders/${orderId}/track`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${user.token}` },
-      })
-      const payload = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        throw new Error(payload.error || 'Unable to track shipment')
-      }
-      if (payload?.order) {
-        setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...payload.order } : o)))
-      }
-    } catch (err: any) {
-      setTrackingErrors((prev) => ({ ...prev, [orderId]: err.message || 'Unable to track shipment' }))
-    } finally {
-      setTrackingLoadingId(null)
-    }
-  }
-
   if (!isLoading && !user) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -233,32 +114,16 @@ export default function OrdersPage() {
               Back to account
             </Link>
             <h1 className="text-3xl font-bold text-gray-900 mt-2">Your Orders</h1>
-            <p className="text-gray-600">Track payment status, fulfillment, and invoices.</p>
+            <p className="text-gray-600">View your past orders and request status updates.</p>
           </div>
           <Link href="/categories/all" className="btn-secondary">
             Continue shopping
           </Link>
         </div>
 
-        {actionMessage ? (
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-700 px-4 py-3 text-sm">
-            {actionMessage}
-          </div>
-        ) : null}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-            <p className="text-sm text-gray-500">Total orders</p>
-            <p className="text-2xl font-semibold text-gray-900">{totalOrders}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-            <p className="text-sm text-gray-500">Paid orders</p>
-            <p className="text-2xl font-semibold text-gray-900">{paidOrders}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-            <p className="text-sm text-gray-500">Support</p>
-            <p className="text-sm text-gray-700">Need help? <Link href="/contact" className="text-primary-600">Contact us</Link></p>
-          </div>
+        <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <strong>Heads up:</strong> payment and shipping are handled manually after we call you. Status
+          updates appear here once we confirm by phone or WhatsApp.
         </div>
 
         {loading ? (
@@ -281,6 +146,10 @@ export default function OrdersPage() {
           <div className="space-y-4">
             {orders.map((order) => {
               const Icon = statusIcon(order.status)
+              const phoneDigits = (order.address?.phone || '').replace(/\D/g, '')
+              const waLink = phoneDigits
+                ? `https://wa.me/${phoneDigits}?text=${encodeURIComponent(`Hi, can you share an update on order ${order.id}?`)}`
+                : null
               return (
                 <div key={order.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                   <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 border-b border-gray-100">
@@ -305,15 +174,6 @@ export default function OrdersPage() {
                         <p className="text-xs text-gray-500">Order total</p>
                         <p className="text-lg font-semibold text-gray-900">{inrSymbol}{Math.round(order.totalCents / 100).toLocaleString('en-IN')}</p>
                       </div>
-                      {canCancel(order) ? (
-                        <button
-                          onClick={() => handleCancel(order.id)}
-                          disabled={cancellingId === order.id}
-                          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
-                        >
-                          {cancellingId === order.id ? 'Cancelling...' : 'Cancel order'}
-                        </button>
-                      ) : null}
                     </div>
                   </div>
 
@@ -342,11 +202,11 @@ export default function OrdersPage() {
                     </div>
 
                     <div className="space-y-3">
-                      <div className="rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-600 space-y-2">
+                      <div className="rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-600 space-y-1">
                         <div className="font-semibold text-gray-900">Delivery address</div>
                         <div>{order.address?.fullName || user?.name || 'Customer'}</div>
                         <div>{order.address?.line1 || 'Address on file'}</div>
-                        <div>{order.address?.line2 || ''}</div>
+                        {order.address?.line2 ? <div>{order.address.line2}</div> : null}
                         <div>
                           {[order.address?.city, order.address?.state, order.address?.postal]
                             .filter(Boolean)
@@ -355,85 +215,29 @@ export default function OrdersPage() {
                       </div>
 
                       <div className="rounded-lg border border-gray-100 bg-white p-4 text-sm text-gray-700 space-y-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="font-semibold text-gray-900">Shipment tracking</div>
-                          <div className="flex items-center gap-2">
-                            {order.trackingUrl ? (
-                              <a
-                                href={order.trackingUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs font-semibold text-primary-600 hover:text-primary-700"
-                              >
-                                Open tracking
-                              </a>
-                            ) : null}
-                            <button
-                              onClick={() => handleTrack(order.id)}
-                              disabled={!order.trackingId || trackingLoadingId === order.id}
-                              className="rounded-lg border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                        <div className="font-semibold text-gray-900">Need a status update?</div>
+                        <p className="text-xs text-gray-500">
+                          We confirm price, payment and delivery by call or WhatsApp. Reach out if it&apos;s been
+                          more than a working day.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {waLink ? (
+                            <a
+                              href={waLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
                             >
-                              {trackingLoadingId === order.id ? 'Refreshing...' : 'Refresh'}
-                            </button>
-                          </div>
+                              <MessageCircle className="h-3 w-3" /> WhatsApp
+                            </a>
+                          ) : null}
+                          <a
+                            href="tel:+917666247666"
+                            className="inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100"
+                          >
+                            <Phone className="h-3 w-3" /> Call us
+                          </a>
                         </div>
-
-                        <div className="text-xs text-gray-500">AWB: {order.trackingId || 'Pending'}</div>
-                        <div className="text-sm text-gray-900">
-                          Status: {order.shippingStatus || getTrackingSummary(order.trackingHistory).status || 'Pending'}
-                        </div>
-                        {order.shipmentUpdatedAt ? (
-                          <div className="text-xs text-gray-500">
-                            Updated {new Date(order.shipmentUpdatedAt).toLocaleString('en-IN')}
-                          </div>
-                        ) : null}
-                        {trackingErrors[order.id] ? (
-                          <div className="text-xs text-red-600">{trackingErrors[order.id]}</div>
-                        ) : null}
-
-                        {(() => {
-                          const summary = getTrackingSummary(order.trackingHistory)
-                          const mapUrl = getMapEmbedUrl(summary.lat, summary.lng)
-                          return (
-                            <>
-                              {summary.location || summary.time ? (
-                                <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
-                                  <div className="font-semibold text-gray-900">Latest update</div>
-                                  {summary.location ? <div>{summary.location}</div> : null}
-                                  {summary.time ? <div>{new Date(summary.time).toLocaleString('en-IN')}</div> : null}
-                                </div>
-                              ) : null}
-                              {mapUrl ? (
-                                <div className="overflow-hidden rounded-lg border border-gray-100">
-                                  <iframe
-                                    title={`Tracking map ${order.id}`}
-                                    src={mapUrl}
-                                    className="h-40 w-full"
-                                    loading="lazy"
-                                  />
-                                </div>
-                              ) : null}
-                              {summary.scans?.length ? (
-                                <div className="space-y-2">
-                                  <div className="text-xs font-semibold text-gray-900">Recent scans</div>
-                                  <div className="space-y-1">
-                                    {summary.scans.map((scan: any, idx: number) => (
-                                      <div key={idx} className="text-xs text-gray-600">
-                                        <span className="font-semibold text-gray-800">
-                                          {scan?.Status || scan?.Scan || scan?.Instruction || 'Update'}
-                                        </span>
-                                        {scan?.Location || scan?.City ? ` ? ${scan?.Location || scan?.City}` : ''}
-                                        {scan?.ScanDateTime || scan?.Time || scan?.Timestamp
-                                          ? ` ? ${new Date(scan?.ScanDateTime || scan?.Time || scan?.Timestamp).toLocaleString('en-IN')}`
-                                          : ''}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : null}
-                            </>
-                          )
-                        })()}
                       </div>
                     </div>
                   </div>

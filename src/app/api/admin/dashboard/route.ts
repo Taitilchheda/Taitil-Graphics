@@ -1,11 +1,11 @@
-﻿import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { jsonWithCache } from '@/lib/response-cache'
 import { requireAuth } from '@/lib/server-auth'
 
 const buildDailySeries = (days: number) => {
   const today = new Date()
-  const series: { date: string; views: number; clicks: number; inquiries: number; orders: number; revenueCents: number; refunds: number; refundCents: number; unitsSold: number }[] = []
+  const series: { date: string; views: number; clicks: number; inquiries: number; orders: number; revenueCents: number; unitsSold: number; leads: number }[] = []
   for (let i = days - 1; i >= 0; i -= 1) {
     const d = new Date(today)
     d.setDate(today.getDate() - i)
@@ -17,9 +17,8 @@ const buildDailySeries = (days: number) => {
       inquiries: 0,
       orders: 0,
       revenueCents: 0,
-      refunds: 0,
-      refundCents: 0,
       unitsSold: 0,
+      leads: 0,
     })
   }
   return series
@@ -36,16 +35,16 @@ export async function GET(request: Request) {
   startDate.setDate(startDate.getDate() - 29)
   startDate.setHours(0, 0, 0, 0)
 
-  const [ordersCount, paidOrders, refundedOrders, eventTotals, eventGroups, recentEvents, recentOrders] = await Promise.all([
+  // Since ordering is now an enquiry/quote flow (Lead), revenue is not
+  // captured automatically. We surface order counts for admin visibility
+  // and lead counts (the real "incoming business" signal for this stage).
+  const [ordersCount, paidOrders, newLeads, eventTotals, eventGroups, recentEvents, recentOrders] = await Promise.all([
     prisma.order.count(),
     prisma.order.findMany({
       where: { paymentStatus: 'PAID' },
       include: { items: true },
     }),
-    prisma.order.findMany({
-      where: { paymentStatus: 'REFUNDED' },
-      select: { totalCents: true, refundedAt: true },
-    }),
+    prisma.lead.count({ where: { status: 'NEW' } }),
     prisma.analyticsEvent.groupBy({
       by: ['type'],
       _count: { _all: true },
@@ -81,8 +80,6 @@ export async function GET(request: Request) {
       unitsSoldByProduct[item.productId].revenueCents += item.priceCents * item.quantity
     })
   })
-
-  const refundCents = refundedOrders.reduce((sum, order) => sum + order.totalCents, 0)
 
   const statsMap: Record<string, {
     productId: string
@@ -153,15 +150,6 @@ export async function GET(request: Request) {
     })
   })
 
-  refundedOrders.forEach((order) => {
-    if (!order.refundedAt) return
-    const key = order.refundedAt.toISOString().slice(0, 10)
-    const bucket = dailyMap[key]
-    if (!bucket) return
-    bucket.refunds += 1
-    bucket.refundCents += order.totalCents
-  })
-
   return jsonWithCache({
     totals: {
       view: totalsByType.VIEW ?? 0,
@@ -174,8 +162,7 @@ export async function GET(request: Request) {
       orders: ordersCount,
       paidOrders: paidOrders.length,
       revenueCents,
-      refunds: refundedOrders.length,
-      refundCents,
+      newLeads,
     },
     productStats,
     timeSeries: daily,

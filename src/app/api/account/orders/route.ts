@@ -17,11 +17,6 @@ export async function GET(request: Request) {
       paymentStatus: true,
       totalCents: true,
       createdAt: true,
-      shippingStatus: true,
-      trackingId: true,
-      trackingUrl: true,
-      trackingHistory: true,
-      shipmentUpdatedAt: true,
       address: true,
       items: {
         select: {

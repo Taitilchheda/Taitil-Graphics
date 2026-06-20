@@ -1,0 +1,63 @@
+# gitleaks secret-scanning rules.
+# Prevents accidentally committing API keys, private keys, tokens, etc.
+# Install gitleaks: https://github.com/gitleaks/gitleaks
+# Run: `gitleaks detect --source .`
+
+title = "Taitil Graphics — secret scan rules"
+
+[extend]
+# Built-in rules cover most common patterns; we add project-specific
+# ones for the providers we actually use.
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT signing secret"
+regex = '''JWT_SECRET\s*=\s*["'][A-Za-z0-9+/=._\-]{16,}["']'''
+tags = ["secret", "auth"]
+
+[[rules]]
+id = "mongodb-connection-string"
+description = "MongoDB Atlas connection string"
+regex = '''mongodb(\+srv)?://[^\s"']+'''
+tags = ["database"]
+
+[[rules]]
+id = "delhivery-token"
+description = "Delhivery API token"
+regex = '''DELHIVERY_API_TOKEN\s*=\s*["'][A-Za-z0-9]{16,}["']'''
+tags = ["shipping"]
+
+[[rules]]
+id = "firebase-private-key"
+description = "Firebase service account private key"
+regex = '''-----BEGIN PRIVATE KEY-----'''
+tags = ["auth", "firebase"]
+
+[[rules]]
+id = "gstin"
+description = "GSTIN (sensitive — keep server-side only)"
+regex = '''\b\d{2}[A-Z]{5}\d{4}[A-Z]{1}\d[Z]{1}[A-Z\d]{1}\b'''
+tags = ["tax"]
+# Only flag GSTIN in env-like contexts, not in user-facing fields
+[rules.allowlist]
+regexes = [
+  '''customerGstin''',
+  '''gst_number''',
+  '''gstin.*label''',
+]
+
+[[rules]]
+id = "firebase-api-key-public"
+description = "Firebase public API key (note: not a secret, but worth flagging for review)"
+regex = '''AIzaSy[A-Za-z0-9_\-]{33}'''
+tags = ["firebase"]
+# Public API keys are technically safe but worth surfacing.
+
+[allowlist]
+paths = [
+  '''node_modules''',
+  '''\.next''',
+  '''package-lock\.json''',
+  '''.gitleaks\.toml''',
+  '''docs/.*\.md''',  # docs often quote example secrets; review manually
+]

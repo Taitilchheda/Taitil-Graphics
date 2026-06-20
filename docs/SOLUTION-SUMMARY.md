@@ -102,8 +102,7 @@ Email: customer@example.com
 Password: password123
 
 Admin Account:
-Email: admin@example.com
-Password: admin123
+- Admin signup is disabled in the UI. Run `node --env-file-if-exists=.env scripts/create-admin.js` to provision the admin user (defaults to `admin@taitil.graphics` with password `Taitil@Admin2026` — change it from `/account` after first login).
 ```
 
 ---

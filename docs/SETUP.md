@@ -68,7 +68,7 @@ The application will be available at: **http://localhost:3002** (or the next ava
 
 4. **Authentication**:
    - Test login with: customer@example.com / password123
-   - Test admin access with: admin@example.com / admin123
+   - Admin signup is disabled. Provision the admin user by running `node --env-file-if-exists=.env scripts/create-admin.js` from the repo root, then sign in at `/auth/login` (Admin Login tab).
 
 ## 🧪 Testing the Complete System
 
@@ -115,8 +115,7 @@ Email: customer@example.com
 Password: password123
 
 Admin Account:
-Email: admin@example.com
-Password: admin123
+- Admin signup is disabled in the UI. Run `node --env-file-if-exists=.env scripts/create-admin.js` to provision the admin user (defaults to `admin@taitil.graphics` with password `Taitil@Admin2026` — change it from `/account` after first login).
 
 # 1. Try logging in at /auth/login
 # 2. Verify JWT cookie is set

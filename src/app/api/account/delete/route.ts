@@ -1,47 +1,65 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { verifyAuthToken } from '@/lib/auth-token'
+import { requireAuth, invalidateUserSessions } from '@/lib/server-auth'
+
+// Account deletion: requires the user to type the literal word "DELETE"
+// in the body as a soft confirmation. This isn't strong protection
+// (the user is already authenticated), but it stops casual API hits
+// from accidentally nuking the account.
+const deleteSchema = z.object({
+  confirm: z.literal('DELETE'),
+  password: z.string().min(1).max(200),
+})
 
 export async function POST(request: Request) {
-  try {
-    const authHeader = request.headers.get('authorization') || ''
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const auth = await requireAuth(request)
+  if (auth instanceof NextResponse) return auth
 
-    const payload = verifyAuthToken(token)
-    const { email, otp } = await request.json()
-    if (!email || !otp) {
-      return NextResponse.json({ error: 'Email and OTP are required' }, { status: 400 })
-    }
-
-    const normalizedEmail = String(email).toLowerCase()
-    if (payload.email !== normalizedEmail) {
-      return NextResponse.json({ error: 'Email mismatch' }, { status: 403 })
-    }
-
-    const baseUrl = process.env.OTP_SERVICE_URL
-    if (!baseUrl) {
-      return NextResponse.json({ error: 'OTP service not configured' }, { status: 500 })
-    }
-
-    const verifyResponse = await fetch(`${baseUrl}/api/otp/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: normalizedEmail, otp }),
-    })
-
-    if (!verifyResponse.ok) {
-      const text = await verifyResponse.text()
-      return NextResponse.json({ error: 'Invalid OTP', detail: text }, { status: 401 })
-    }
-
-    await prisma.user.delete({ where: { email: normalizedEmail } })
-
-    return NextResponse.json({ ok: true })
-  } catch (error) {
-    console.error('Account delete error', error)
-    return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 })
+  const body = await request.json().catch(() => null)
+  const parsed = deleteSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Confirmation phrase and password are required.' },
+      { status: 400 },
+    )
   }
+
+  // Re-verify password before destructive action.
+  const user = await prisma.user.findUnique({
+    where: { id: auth.id },
+    select: { password: true },
+  })
+  if (!user?.password) {
+    return NextResponse.json({ error: 'No password on file to verify against.' }, { status: 400 })
+  }
+  // We only support bcrypt'd passwords here; plaintext legacy passwords
+  // can be migrated by the user via the password-change flow first.
+  if (!user.password.startsWith('$2')) {
+    return NextResponse.json(
+      { error: 'Set a password via the change-password flow first.' },
+      { status: 400 },
+    )
+  }
+  const bcrypt = await import('bcryptjs')
+  const ok = await bcrypt.compare(parsed.data.password, user.password)
+  if (!ok) {
+    return NextResponse.json({ error: 'Password is incorrect.' }, { status: 401 })
+  }
+
+  // Soft-cascade: delete related rows that aren't set to cascade in the
+  // schema (Cart, CartItem, Order, OrderItem, Review, Address, AdminAudit).
+  // We use a transaction so the delete is atomic.
+  await prisma.$transaction([
+    prisma.cartItem.deleteMany({ where: { cart: { userId: auth.id } } }),
+    prisma.cart.deleteMany({ where: { userId: auth.id } }),
+    prisma.orderItem.deleteMany({ where: { order: { userId: auth.id } } }),
+    prisma.order.deleteMany({ where: { userId: auth.id } }),
+    prisma.review.deleteMany({ where: { userId: auth.id } }),
+    prisma.address.deleteMany({ where: { userId: auth.id } }),
+    prisma.adminAudit.deleteMany({ where: { adminId: auth.id } }),
+    prisma.user.delete({ where: { id: auth.id } }),
+  ])
+
+  return NextResponse.json({ ok: true })
 }
