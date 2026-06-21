@@ -14,6 +14,7 @@ import {
   csrfCookieName,
   csrfHeaderName,
   generateCsrfToken,
+  isBearerAuthenticated,
 } from '@/lib/csrf'
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
@@ -70,7 +71,9 @@ export const proxy = (request: NextRequest) => {
   }
 
   // 2. CSRF enforcement on state-changing API calls (except exempt).
-  if (isApi && isStateChanging && !isExempt(pathname)) {
+  //    Bearer-authenticated requests are also exempt: the JWT is the
+  //    CSRF check in that case (see lib/csrf.ts:isBearerAuthenticated).
+  if (isApi && isStateChanging && !isExempt(pathname) && !isBearerAuthenticated(request)) {
     const cookieToken = request.cookies.get(csrfCookieName)?.value
     const headerToken = request.headers.get(csrfHeaderName)
     if (!cookieToken || !headerToken || cookieToken !== headerToken) {

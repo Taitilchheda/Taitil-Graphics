@@ -53,6 +53,7 @@ export const isBearerAuthenticated = (request: Request) => {
 export const enforceCsrf = (request: Request) => {
   if (!env.CSRF_ENABLED) return null
   if (SAFE_METHODS.has(request.method)) return null
+  if (isBearerAuthenticated(request)) return null
 
   const cookieHeader = request.headers.get('cookie') || ''
   const cookieMatch = cookieHeader.match(new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^;]+)`))

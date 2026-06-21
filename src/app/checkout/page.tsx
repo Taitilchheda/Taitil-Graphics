@@ -8,6 +8,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useCart } from "@/components/providers/CartProvider";
+import { ensureCsrfToken } from "@/lib/csrf-client";
 
 // Checkout is a "request a call back" form. Once the user submits, the
 // server stores the enquiry as a Lead and we redirect them to a
@@ -81,12 +82,22 @@ export default function CheckoutPage() {
 
     setSubmitting(true);
     try {
+      // Make sure the CSRF cookie exists before the state-changing POST.
+      // The proxy short-circuits CSRF for Bearer-authenticated requests
+      // (see src/proxy.ts) — we still send the token explicitly so
+      // other state-changing endpoints hit on this page keep working
+      // if the proxy exemption ever changes.
+      const csrfToken = await ensureCsrfToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user.token}`,
+      };
+      if (csrfToken) headers["x-csrf-token"] = csrfToken;
+
       const res = await fetch("/api/checkout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user.token}`,
-        },
+        credentials: "same-origin",
+        headers,
         body: JSON.stringify({
           address,
           notes: notes || undefined,
