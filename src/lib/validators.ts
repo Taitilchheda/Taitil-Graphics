@@ -37,6 +37,17 @@ export const otpVerifySchema = z.object({
   purpose: z.enum(['login', 'register', 'reset']).default('login'),
 })
 
+// Exchange a Firebase Auth email-link ID token for our own HS256 JWT.
+// The idToken is a Firebase-issued JWT (typically 800-1500 chars). We
+// also accept the email the user used to start the sign-in so we can
+// issue a friendly error when the token was minted for a different
+// address — firebase-admin's verifyIdToken already enforces this, but
+// having the email in the body helps with logging.
+export const firebaseSessionSchema = z.object({
+  idToken: z.string().min(20).max(4000),
+  email: z.string().email().max(200).toLowerCase().trim().optional(),
+})
+
 export const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1).max(200),
   newPassword: z

@@ -1,6 +1,8 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { sendSignInLinkToEmail, type ActionCodeSettings } from 'firebase/auth'
+import { getFirebaseAuth } from '@/lib/firebase-client'
 
 const getStableId = (user: Partial<User>) => (user.id ? user.id : user.email ? `email-${user.email?.toLowerCase()}` : 'guest')
 
@@ -20,8 +22,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null
-  sendOtp: (phone: string, purpose?: 'login' | 'signup') => Promise<{ ok: boolean; devCode?: string; message?: string; error?: string }>
-  verifyOtp: (phone: string, otp: string, profile?: Partial<User>, purpose?: 'login' | 'signup') => Promise<{ ok: boolean; error?: string }>
+  signInWithEmailLink: (email: string) => Promise<{ ok: boolean; error?: string }>
   loginWithPassword: (email: string, password: string) => Promise<boolean>
   adminLogin: (email: string, password: string) => Promise<boolean>
   registerWithPassword: (input: {
@@ -37,10 +38,20 @@ interface AuthContextType {
   logout: () => void
   deleteAccount: (password: string) => Promise<boolean>
   updateUser: (data: Partial<User>) => void
+  setUser: (user: User | null) => void
   isLoading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+// Where the email link should land the user. In dev we point at
+// localhost; in production we use the canonical www. host. Firebase
+// Auth requires the host to be in the project's "Authorized domains"
+// list — see the deployment notes in the plan.
+const getContinueUrl = () => {
+  if (typeof window === 'undefined') return ''
+  return `${window.location.origin}/auth/finish`
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -61,49 +72,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  const sendOtp = async (phone: string, purpose: 'login' | 'signup' = 'login'): Promise<{ ok: boolean; devCode?: string; message?: string; error?: string }> => {
+  // Magic-link sign-in. We call Firebase's sendSignInLinkToEmail with
+  // a continueUrl pointing at /auth/finish; the user clicks the link in
+  // their email, lands on the finish page, and that page calls
+  // signInWithEmailLink + POSTs the ID token to /api/auth/firebase/session
+  // to exchange it for our own JWT.
+  //
+  // We stash the email in localStorage under the Firebase-documented
+  // `emailForSignIn` key so the finish page can find it without us
+  // threading it through the URL (the link only carries an oobCode).
+  const signInWithEmailLink = async (email: string): Promise<{ ok: boolean; error?: string }> => {
+    const trimmed = email.trim().toLowerCase()
+    if (!trimmed) return { ok: false, error: 'Enter your email address.' }
     try {
-      const response = await fetch('/api/auth/otp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, purpose }),
-      })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        return { ok: false, error: payload.error || 'Failed to send OTP.' }
+      const auth = getFirebaseAuth()
+      const actionCodeSettings: ActionCodeSettings = {
+        url: getContinueUrl(),
+        handleCodeInApp: true,
       }
-      const data = await response.json().catch(() => ({}))
-      return { ok: true, devCode: data.devCode, message: data.message }
-    } catch (error) {
-      console.error('Send OTP error:', error)
-      return { ok: false, error: 'Failed to send OTP.' }
-    }
-  }
-
-  const verifyOtp = async (phone: string, otp: string, profile?: Partial<User>, purpose: 'login' | 'signup' = 'login'): Promise<{ ok: boolean; error?: string }> => {
-    try {
-      const response = await fetch('/api/auth/otp/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, otp, purpose, ...profile }),
-      })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        return { ok: false, error: payload.error || 'OTP verification failed.' }
+      await sendSignInLinkToEmail(auth, trimmed, actionCodeSettings)
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('emailForSignIn', trimmed)
       }
-      const data = await response.json()
-      const signedIn: User = {
-        ...data.user,
-        token: data.token,
-        id: getStableId(data.user),
-        role: data.user.role || 'customer',
-      }
-      setUser(signedIn)
-      localStorage.setItem('user', JSON.stringify(signedIn))
       return { ok: true }
-    } catch (error) {
-      console.error('Verify OTP error:', error)
-      return { ok: false, error: 'OTP verification failed.' }
+    } catch (err: any) {
+      // Surface the most useful Firebase error messages without
+      // dumping the entire SDK error to the user.
+      const code: string = err?.code || ''
+      const message =
+        code === 'auth/invalid-email'
+          ? 'That email address is not valid.'
+          : code === 'auth/too-many-requests'
+            ? 'Too many requests. Please wait a minute and try again.'
+            : code === 'auth/network-request-failed'
+              ? 'Network error. Check your connection and try again.'
+              : err?.message || 'Could not send the sign-in link. Please try again.'
+      return { ok: false, error: message }
     }
   }
 
@@ -156,12 +160,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Password-based registration. Replaces the OTP signup flow that was
-  // broken when the OTP service went offline. Hits /api/auth/register-with-password
-  // (no CSRF needed — that endpoint isn't in CSRF_EXEMPT_PATHS but the
-  // cookie is set on every /api/* request by src/proxy.ts so the form
-  // works as long as the user has triggered any safe request first; the
-  // register page itself hits /api/auth/csrf on mount to be safe).
+  // Password-based registration. Hits /api/auth/register-with-password
+  // (CSRF-protected; we pre-fetch the token via /api/auth/csrf on
+  // mount — see proxy.ts which also seeds the cookie).
   const registerWithPassword = async (input: {
     email: string
     password: string
@@ -173,7 +174,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     gstNumber?: string
   }): Promise<{ ok: boolean; error?: string }> => {
     try {
-      // Make sure the CSRF cookie exists before the state-changing POST.
       let csrfToken: string | null = null
       if (typeof document !== 'undefined') {
         const match = document.cookie
@@ -262,8 +262,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
+  // setUser lets external flows (e.g. /auth/finish after a magic-link
+  // exchange) push a fully-formed user object into context. We mirror
+  // it to localStorage so a page reload doesn't drop the session.
+  const setSessionUser = (next: User | null) => {
+    if (next) {
+      const normalized: User = { ...next, id: getStableId(next), role: next.role || 'customer' }
+      localStorage.setItem('user', JSON.stringify(normalized))
+      setUser(normalized)
+    } else {
+      localStorage.removeItem('user')
+      setUser(null)
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, sendOtp, verifyOtp, loginWithPassword, adminLogin, registerWithPassword, logout, deleteAccount, updateUser, isLoading }}>
+    <AuthContext.Provider value={{ user, signInWithEmailLink, loginWithPassword, adminLogin, registerWithPassword, logout, deleteAccount, updateUser, setUser: setSessionUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

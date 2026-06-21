@@ -30,6 +30,14 @@ const CSRF_EXEMPT_PATHS = [
   '/api/auth/otp/send',
   '/api/auth/otp/verify',
   '/api/auth/csrf',
+  // Firebase email-link session exchange: the request is authenticated
+  // by a Firebase-issued ID token (the server verifies it with
+  // firebase-admin). The ID token is the CSRF check here — only a
+  // browser that completed `signInWithEmailLink` against our project
+  // can mint one. Without this exemption, the first-time flow
+  // (login → email → /auth/finish → POST /api/auth/firebase/session)
+  // would 403 because the user has no x-csrf cookie yet.
+  '/api/auth/firebase/session',
   // Analytics is fire-and-forget; blocking it would break event tracking
   // for anonymous visitors (no CSRF cookie yet). Risk is bounded: the
   // endpoint only writes rows to a log table.

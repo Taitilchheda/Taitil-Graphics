@@ -194,7 +194,7 @@ export default function RegisterPage() {
             </section>
 
             <section className="space-y-4">
-              <div className="text-sm font-semibold text-gray-900">Contact &amp; address</div>
+              <div className="text-sm font-semibold text-gray-900">Contact details (optional)</div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
@@ -209,9 +209,9 @@ export default function RegisterPage() {
                       onChange={(e) => setPhone(e.target.value)}
                       className="input-field pl-10"
                       placeholder="Enter your phone number"
-                      required
                     />
                   </div>
+                  <p className="mt-1 text-xs text-gray-500">Used only for delivery contact.</p>
                 </div>
 
                 <div>
@@ -226,7 +226,6 @@ export default function RegisterPage() {
                       onChange={(e) => setAddress(e.target.value)}
                       className="input-field pl-10 min-h-[80px]"
                       placeholder="Full address"
-                      required
                     />
                   </div>
                 </div>
@@ -303,7 +302,9 @@ export default function RegisterPage() {
                 Sign in
               </Link>
             </p>
-            <p className="text-xs text-gray-500 mt-1">Your credentials are saved securely for retailer login.</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Prefer no password? Sign in with a magic link from the login page.
+            </p>
           </div>
         </div>
       </div>
