@@ -180,7 +180,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const res = await fetch('/api/products')
+        const res = await fetch('/api/products', { cache: 'no-store' })
         if (res.ok) {
           const data = await res.json()
           const dbProducts = (data.products || []).map(normalizeProduct)
@@ -194,6 +194,17 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       }
     }
     loadProducts()
+    // Re-fetch when the tab regains focus so newly-created listings from
+    // another window/tab become visible without a hard reload.
+    const onFocus = () => loadProducts()
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', onFocus)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', onFocus)
+      }
+    }
   }, [])
 
   const mergedCatalog = useMemo(() => {

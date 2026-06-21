@@ -17,11 +17,13 @@ export default function EditListingPage() {
   const productId = params.id as string
 
   const { user, isLoading } = useAuth()
-  const { categories, getProductById, updateProduct, deleteProduct } = useCatalog()
+  const { categories, getProductById, updateProduct, deleteProduct, allProducts } = useCatalog()
   const { summary } = useAnalytics()
   const [status, setStatus] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [fetchedProduct, setFetchedProduct] = useState<any | null>(null)
+  const [loadingProduct, setLoadingProduct] = useState(false)
 
   useEffect(() => {
     if (!isLoading && (!user || user.role?.toLowerCase() !== 'admin')) {
@@ -29,7 +31,55 @@ export default function EditListingPage() {
     }
   }, [isLoading, user, router])
 
-  const product = useMemo(() => getProductById(productId), [getProductById, productId])
+  // Edit page is often reached via a direct URL (no prior /admin/listings
+  // visit) — CatalogProvider's single mount-time fetch may not have run,
+  // so the product wouldn't be in `allProducts`. Fall back to a direct
+  // fetch from /api/products/[id] so the form is always populated.
+  useEffect(() => {
+    let cancelled = false
+    const fromCatalog = allProducts.find((p) => p.id === productId)
+    if (fromCatalog) {
+      setFetchedProduct(fromCatalog)
+      return
+    }
+    setLoadingProduct(true)
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/products/${productId}`, { cache: 'no-store' })
+        if (cancelled) return
+        if (res.ok) {
+          const data = await res.json()
+          const p = data.product || null
+          if (p) {
+            // Normalize to match CatalogProduct shape so the form is happy.
+            const normalized = {
+              ...p,
+              id: p.id,
+              category: p.category?.id || p.categoryId,
+              subcategory: p.subcategory?.id || p.subcategoryId,
+              images: Array.isArray(p.images) && p.images.length ? p.images : p.image ? [p.image] : ['/logo.svg'],
+              features: Array.isArray(p.features) ? p.features : [],
+              badges: Array.isArray(p.badges) ? p.badges : [],
+            }
+            setFetchedProduct(normalized)
+          } else {
+            setFetchedProduct(null)
+          }
+        } else {
+          setFetchedProduct(null)
+        }
+      } catch (err) {
+        if (!cancelled) setFetchedProduct(null)
+      } finally {
+        if (!cancelled) setLoadingProduct(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [productId, allProducts])
+
+  const product = useMemo(() => fetchedProduct || getProductById(productId), [fetchedProduct, getProductById, productId])
 
   if (!user || user.role?.toLowerCase() !== 'admin') {
     return (
@@ -37,6 +87,17 @@ export default function EditListingPage() {
         <Header />
         <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <p className="text-center text-gray-600">Redirecting to login...</p>
+        </main>
+      </div>
+    )
+  }
+
+  if (loadingProduct) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <p className="text-center text-gray-600">Loading listing…</p>
         </main>
       </div>
     )
@@ -52,7 +113,7 @@ export default function EditListingPage() {
             Back to listings
           </Link>
           <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6 text-sm text-gray-700">
-            Listing not found.
+            Listing not found. It may have been deleted or the id is wrong.
           </div>
         </main>
         <Footer />
@@ -124,6 +185,7 @@ export default function EditListingPage() {
     setSubmitting(false)
     if (result.ok) {
       setStatus('Changes saved to MongoDB.')
+      router.refresh()
     } else {
       setErrorMessage(result.error || 'Update failed. Please try again.')
     }

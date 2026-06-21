@@ -56,3 +56,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
+
+// Stub GET so prefetch/probe requests (link previews, status checkers, etc.)
+// don't return 405. Real analytics data is not exposed via GET.
+export async function GET() {
+  return new NextResponse(null, { status: 204 })
+}

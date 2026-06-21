@@ -64,6 +64,9 @@ export default function NewListingPage() {
     if (result.ok) {
       setSavedMessage('Saved to MongoDB. Add another or jump to listings.')
       setFormResetKey((prev) => prev + 1)
+      // Force server components (homepage, category pages) to re-fetch on
+      // next visit so the new product is visible without a hard refresh.
+      router.refresh()
     } else {
       setErrorMessage(result.error || 'Save failed. Please try again.')
     }

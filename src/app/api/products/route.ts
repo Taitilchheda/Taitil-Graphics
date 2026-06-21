@@ -125,13 +125,14 @@ export async function GET() {
       },
       orderBy: { createdAt: 'desc' },
     })
-    return jsonWithCache({ products }, { seconds: 60 })
+    return jsonWithCache({ products, count: products.length }, { seconds: 30 })
   } catch (error) {
     console.error('Products GET error', error)
     const fallbackProducts = getAllProducts()
     return jsonWithCache(
       {
         products: fallbackProducts,
+        count: fallbackProducts.length,
         fallback: true,
       },
       { seconds: 30 }
@@ -180,8 +181,24 @@ export async function POST(request: NextRequest) {
       fragile,
     } = body
 
+    if (!name || !description || !categoryId) {
+      return NextResponse.json(
+        { error: 'name, description and categoryId are required' },
+        { status: 400 }
+      )
+    }
+
     const category = await ensureCategory(categoryId, categoryName)
     const subcategory = await ensureSubcategory(subcategoryId, category.id, subcategoryName)
+
+    // image is NOT NULL in Prisma — default to the brand logo so admin saves
+    // never fail on a missing image field.
+    const resolvedImage = image || (Array.isArray(images) && images.length ? images[0] : null) || '/logo.svg'
+    const resolvedImages = Array.isArray(images) && images.length
+      ? images
+      : resolvedImage
+        ? [resolvedImage]
+        : []
 
     const resolvedPriceCents = priceCents ?? 0
     const rawListingCents =
@@ -191,6 +208,15 @@ export async function POST(request: NextRequest) {
     const resolvedListingCents = resolvedPriceCents > 0 ? Math.min(rawListingCents, resolvedPriceCents) : rawListingCents
     const resolvedDiscount = computeDiscountPercent(resolvedPriceCents, resolvedListingCents)
 
+    // Always generate a SKU if one wasn't provided. The schema has @unique
+    // on sku, and Prisma + MongoDB creates a NON-sparse unique index for
+    // optional unique fields — meaning only one document can have sku=null
+    // across the entire collection. So we always set a unique value.
+    const resolvedSku =
+      sku && String(sku).trim()
+        ? String(sku).trim()
+        : `sku-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+
     const created = await prisma.product.create({
       data: {
         id: id || undefined,
@@ -198,8 +224,8 @@ export async function POST(request: NextRequest) {
         description,
         categoryId: category.id,
         subcategoryId: subcategory ? subcategory.id : null,
-        image,
-        images: images ? images : undefined,
+        image: resolvedImage,
+        images: resolvedImages.length ? resolvedImages : undefined,
         features: features ? features : undefined,
         badges: badges ? badges : undefined,
         isNew: isNew ?? true,
@@ -208,7 +234,7 @@ export async function POST(request: NextRequest) {
         stock,
         priceCents: resolvedPriceCents,
         listingPriceCents: resolvedListingCents,
-        sku: sku || null,
+        sku: resolvedSku,
         reorderLevel: reorderLevel ?? 5,
         discountPercent: resolvedDiscount,
         type: type || (category.id === 'cake-decorations' ? 'PHYSICAL' : 'SERVICE'),
@@ -230,6 +256,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ product: created }, { status: 201 })
   } catch (error) {
     console.error('Products POST error', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Internal server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

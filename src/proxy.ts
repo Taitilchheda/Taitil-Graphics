@@ -29,6 +29,10 @@ const CSRF_EXEMPT_PATHS = [
   '/api/auth/otp/send',
   '/api/auth/otp/verify',
   '/api/auth/csrf',
+  // Analytics is fire-and-forget; blocking it would break event tracking
+  // for anonymous visitors (no CSRF cookie yet). Risk is bounded: the
+  // endpoint only writes rows to a log table.
+  '/api/analytics',
 ]
 
 const isExempt = (pathname: string) => CSRF_EXEMPT_PATHS.some((p) => pathname.startsWith(p))

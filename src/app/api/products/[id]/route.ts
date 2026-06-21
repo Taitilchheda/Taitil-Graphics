@@ -102,11 +102,57 @@ export async function PATCH(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const category = await ensureCategory(categoryId, categoryName)
-    const subcategory = await ensureSubcategory(subcategoryId, category.id, subcategoryName)
+    // Build a sparse patch: only include fields that were actually sent
+    // (non-undefined). This is what makes PATCH truly partial — old
+    // code passed every field with `?? undefined`, which still caused
+    // ensureCategory(undefined) to crash.
+    const data: Record<string, unknown> = {}
 
-    const shouldUpdatePricing = typeof priceCents === 'number' || typeof listingPriceCents === 'number' || typeof discountPercent === 'number'
-    let pricingUpdate: { priceCents?: number; listingPriceCents?: number; discountPercent?: number } = {}
+    if (typeof name === 'string') data.name = name
+    if (typeof description === 'string') data.description = description
+
+    if (typeof categoryId === 'string' && categoryId) {
+      const category = await ensureCategory(categoryId, categoryName)
+      data.categoryId = category.id
+      if (typeof subcategoryId === 'string' && subcategoryId) {
+        const subcategory = await ensureSubcategory(subcategoryId, category.id, subcategoryName)
+        data.subcategoryId = subcategory ? subcategory.id : null
+      } else if (subcategoryId === null) {
+        data.subcategoryId = null
+      }
+    }
+
+    if (typeof image === 'string') data.image = image
+    if (Array.isArray(images)) data.images = images.length ? images : []
+
+    if (Array.isArray(features)) data.features = features
+    if (Array.isArray(badges)) data.badges = badges
+
+    if (typeof isNew === 'boolean') data.isNew = isNew
+    if (typeof isRecommended === 'boolean') data.isRecommended = isRecommended
+    if (typeof isHotSeller === 'boolean') data.isHotSeller = isHotSeller
+    if (typeof stock === 'number') data.stock = stock
+    if (typeof sku === 'string' && sku.trim()) data.sku = sku.trim()
+    if (typeof reorderLevel === 'number') data.reorderLevel = reorderLevel
+    if (typeof type === 'string') data.type = type
+    if (variants !== undefined) data.variants = variants
+    if (media !== undefined) data.media = media
+    if (typeof seoTitle === 'string') data.seoTitle = seoTitle
+    if (typeof seoDescription === 'string') data.seoDescription = seoDescription
+    if (typeof canonicalUrl === 'string') data.canonicalUrl = canonicalUrl
+    if (typeof lowStockThreshold === 'number') data.lowStockThreshold = lowStockThreshold
+    if (typeof weightGrams === 'number') data.weightGrams = weightGrams
+    if (typeof lengthCm === 'number') data.lengthCm = lengthCm
+    if (typeof widthCm === 'number') data.widthCm = widthCm
+    if (typeof heightCm === 'number') data.heightCm = heightCm
+    if (typeof hsnCode === 'string' && hsnCode.trim()) data.hsnCode = hsnCode.trim()
+    if (typeof fragile === 'boolean') data.fragile = fragile
+
+    // Pricing logic
+    const shouldUpdatePricing =
+      typeof priceCents === 'number' ||
+      typeof listingPriceCents === 'number' ||
+      typeof discountPercent === 'number'
 
     if (shouldUpdatePricing) {
       const basePriceCents = typeof priceCents === 'number' ? priceCents : existing.priceCents
@@ -123,55 +169,36 @@ export async function PATCH(
           : typeof discountPercent === 'number'
             ? discountPercent
             : existing.discountPercent
-      pricingUpdate = {
-        priceCents: basePriceCents,
-        listingPriceCents: normalizedListingCents,
-        discountPercent: resolvedDiscountPercent,
-      }
+      data.priceCents = basePriceCents
+      data.listingPriceCents = normalizedListingCents
+      data.discountPercent = resolvedDiscountPercent
     }
 
-    const resolvedHsn = (typeof hsnCode === 'string' && hsnCode.trim())
-      ? hsnCode.trim()
-      : existing.hsnCode || resolveHsnCode({ categoryId: category.id, subcategoryId: subcategory ? subcategory.id : null, name: name || existing.name })
+    // Image fallback: if neither image nor images were sent, keep existing.
+    if (!('image' in data) && !Array.isArray(images)) {
+      data.image = existing.image
+    }
+
+    // HSN fallback when not provided
+    if (typeof hsnCode !== 'string' || !hsnCode.trim()) {
+      const resolvedHsn = existing.hsnCode || resolveHsnCode({
+        categoryId: (data.categoryId as string) || existing.categoryId,
+        subcategoryId: (data.subcategoryId as string | null) ?? existing.subcategoryId,
+        name: (data.name as string) || existing.name,
+      })
+      if (resolvedHsn) data.hsnCode = resolvedHsn
+    }
 
     const updated = await prisma.product.update({
       where: { id },
-      data: {
-        name,
-        description,
-        categoryId: category.id,
-        subcategoryId: subcategory ? subcategory.id : null,
-        image,
-        images: images ? images : undefined,
-        features: features ? features : undefined,
-        badges: badges ? badges : undefined,
-        isNew: isNew ?? undefined,
-        isRecommended: isRecommended ?? undefined,
-        isHotSeller: isHotSeller ?? undefined,
-        stock,
-        sku: sku ?? undefined,
-        reorderLevel: reorderLevel ?? undefined,
-        type: type ?? undefined,
-        variants: variants ?? undefined,
-        media: media ?? undefined,
-        seoTitle: seoTitle ?? undefined,
-        seoDescription: seoDescription ?? undefined,
-        canonicalUrl: canonicalUrl ?? undefined,
-        lowStockThreshold: lowStockThreshold ?? undefined,
-        weightGrams: typeof weightGrams === 'number' ? weightGrams : undefined,
-        lengthCm: typeof lengthCm === 'number' ? lengthCm : undefined,
-        widthCm: typeof widthCm === 'number' ? widthCm : undefined,
-        heightCm: typeof heightCm === 'number' ? heightCm : undefined,
-        hsnCode: resolvedHsn ?? undefined,
-        fragile: typeof fragile === 'boolean' ? fragile : undefined,
-        ...pricingUpdate,
-      },
+      data,
     })
 
     return NextResponse.json({ product: updated })
   } catch (error) {
     console.error('Product PATCH error', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Internal server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
@@ -187,6 +214,7 @@ export async function DELETE(
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('Product DELETE error', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Internal server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
