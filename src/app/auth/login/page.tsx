@@ -4,7 +4,7 @@ import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/components/providers/AuthProvider'
-import { Mail, Phone, Lock, ShieldCheck, Store } from 'lucide-react'
+import { Mail, Lock, ShieldCheck, Store } from 'lucide-react'
 
 // Login supports email-OTP for retailer accounts (the path the user
 // asked for: enter email, receive a 6-digit code, type it in) and
@@ -14,7 +14,6 @@ import { Mail, Phone, Lock, ShieldCheck, Store } from 'lucide-react'
 
 function LoginPageContent() {
   const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [otp, setOtp] = useState('')
   const [linkPending, setLinkPending] = useState(false)
@@ -159,23 +158,6 @@ function LoginPageContent() {
                 </div>
                 {!usePasswordLogin && (
                   <>
-                    <div>
-                      <label htmlFor="otp-phone" className="block text-sm font-medium text-gray-700 mb-2">
-                        Phone (delivery contact)
-                      </label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                        <input
-                          id="otp-phone"
-                          type="tel"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="input-field pl-10"
-                          placeholder="e.g. +919876543210"
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Optional. We only use this for delivery follow-ups.</p>
-                    </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <button
                         type="button"
