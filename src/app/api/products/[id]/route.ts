@@ -2,6 +2,7 @@
 import { prisma } from '@/lib/prisma'
 import { resolveHsnCode } from '@/lib/hsn'
 import { jsonWithCache } from '@/lib/response-cache'
+import { requireAdmin } from '@/lib/server-auth'
 
 const computeDiscountPercent = (mrpCents: number, listingCents: number) => {
   if (mrpCents <= 0) return 0
@@ -56,6 +57,8 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request)
+  if (auth instanceof NextResponse) return auth
   const { id } = await context.params
   try {
     const body = await request.json()
@@ -173,9 +176,11 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request)
+  if (auth instanceof NextResponse) return auth
   const { id } = await context.params
   try {
     await prisma.product.delete({ where: { id } })

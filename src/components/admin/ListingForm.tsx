@@ -38,11 +38,12 @@ type ListingFormProps = {
   initialState?: ListingFormState
   onSubmit: (data: ListingFormState) => void
   primaryLabel?: string
+  submitting?: boolean
 }
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=420&fit=crop'
 
-export function ListingForm({ mode, categories, initialState, onSubmit, primaryLabel }: ListingFormProps) {
+export function ListingForm({ mode, categories, initialState, onSubmit, primaryLabel, submitting = false }: ListingFormProps) {
   const firstCategory = categories[0]
   const firstSub = firstCategory?.subcategories[0]
 
@@ -518,9 +519,9 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
         </div>
       </div>
       <div className="flex gap-3">
-        <button type="submit" className="btn-primary inline-flex items-center gap-2">
+        <button type="submit" disabled={submitting} className="btn-primary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
           {mode === 'edit' ? <Save className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
-          {primaryLabel || (mode === 'edit' ? 'Save changes' : 'Add product')}
+          {submitting ? 'Saving...' : primaryLabel || (mode === 'edit' ? 'Save changes' : 'Add product')}
         </button>
       </div>
     </form>

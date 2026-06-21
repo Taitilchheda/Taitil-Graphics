@@ -20,6 +20,8 @@ export default function EditListingPage() {
   const { categories, getProductById, updateProduct, deleteProduct } = useCatalog()
   const { summary } = useAnalytics()
   const [status, setStatus] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (!isLoading && (!user || user.role?.toLowerCase() !== 'admin')) {
@@ -86,8 +88,11 @@ export default function EditListingPage() {
     fragile: product.fragile ?? false,
   }
 
-  const handleUpdate = (data: ListingFormState) => {
-    updateProduct(product.id, {
+  const handleUpdate = async (data: ListingFormState) => {
+    setSubmitting(true)
+    setStatus(null)
+    setErrorMessage(null)
+    const result = await updateProduct(product.id, {
       name: data.name.trim(),
       description: data.description.trim(),
       categoryId: data.categoryId,
@@ -116,7 +121,12 @@ export default function EditListingPage() {
       hsnCode: data.hsnCode,
       fragile: data.fragile,
     })
-    setStatus('Changes saved.')
+    setSubmitting(false)
+    if (result.ok) {
+      setStatus('Changes saved to MongoDB.')
+    } else {
+      setErrorMessage(result.error || 'Update failed. Please try again.')
+    }
   }
 
   const views = summary.productCounts.views[product.id] || 0
@@ -155,6 +165,12 @@ export default function EditListingPage() {
           </div>
         )}
 
+        {errorMessage && (
+          <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-100 px-3 py-2 rounded-lg">
+            {errorMessage}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
             <div>
@@ -168,6 +184,7 @@ export default function EditListingPage() {
               initialState={initialState}
               onSubmit={handleUpdate}
               primaryLabel="Save changes"
+              submitting={submitting}
             />
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">

@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { categories as baseCategories, Category, Product, Subcategory } from '@/data/products'
+import { useAuth } from '@/components/providers/AuthProvider'
+import { ensureCsrfToken } from '@/lib/csrf-client'
 
 type CatalogProduct = Product & {
   createdAt?: string
@@ -81,9 +83,9 @@ interface CatalogContextType {
   newListings: CatalogProduct[]
   recommendedProducts: CatalogProduct[]
   hotSellers: CatalogProduct[]
-  addProduct: (product: NewProductInput) => void
-  updateProduct: (id: string, data: Partial<NewProductInput>) => void
-  deleteProduct: (id: string) => void
+  addProduct: (product: NewProductInput) => Promise<{ ok: boolean; error?: string }>
+  updateProduct: (id: string, data: Partial<NewProductInput>) => Promise<{ ok: boolean; error?: string }>
+  deleteProduct: (id: string) => Promise<{ ok: boolean; error?: string }>
   addCategory: (data: { name: string; description?: string }) => Category
   updateCategory: (id: string, data: Partial<Category>) => Category | null
   deleteCategory: (id: string) => void
@@ -113,6 +115,19 @@ const cloneCatalog = (): Category[] =>
 export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [customProducts, setCustomProducts] = useState<CatalogProduct[]>([])
   const [inventory, setInventory] = useState<Record<string, number>>({})
+  const { user } = useAuth()
+
+  // Build the headers we need for any state-changing /api/products call.
+  // The CSRF double-submit cookie pattern (set by the proxy) requires
+  // echoing the cookie back as a header, AND we send the admin's JWT so
+  // the server can verify the call came from a signed-in admin.
+  const buildAuthHeaders = async (): Promise<Record<string, string>> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const csrf = await ensureCsrfToken()
+    if (csrf) headers['x-csrf-token'] = csrf
+    if (user?.token) headers['Authorization'] = `Bearer ${user.token}`
+    return headers
+  }
 
   const normalizeProduct = (p: any): CatalogProduct => {
     const priceCents = typeof p.priceCents === 'number' ? p.priceCents : typeof p.price === 'number' ? p.price : 0
@@ -260,7 +275,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const recommendedProducts = useMemo(() => allProducts.filter((product) => product.isRecommended), [allProducts])
   const hotSellers = useMemo(() => allProducts.filter((product) => product.isHotSeller), [allProducts])
 
-  const addProduct = (input: NewProductInput) => {
+  const addProduct = async (input: NewProductInput): Promise<{ ok: boolean; error?: string }> => {
     const images =
       input.images && input.images.length > 0
         ? input.images
@@ -307,30 +322,35 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       fragile: input.fragile,
     }
 
-    fetch('/api/products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error('Failed to save product')
-        const data = await res.json()
-        const normalized = normalizeProduct(data.product)
-        setCustomProducts((prev) => [normalized, ...prev])
+    let response: Response
+    try {
+      response = await fetch('/api/products', {
+        method: 'POST',
+        headers: await buildAuthHeaders(),
+        body: JSON.stringify(payload),
       })
-      .catch((err) => console.error('Failed to persist product to DB', err))
-
-    const tempId = `temp-${Date.now()}`
-    const optimistic: CatalogProduct = {
-      ...payload,
-      id: payload.id || tempId,
-      category: payload.categoryId,
-      subcategory: payload.subcategoryId,
+    } catch (err) {
+      console.error('Failed to reach /api/products', err)
+      return { ok: false, error: 'Network error. Check your connection.' }
     }
-    setCustomProducts((prev) => [optimistic, ...prev])
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({} as { error?: string }))
+      console.error('addProduct server error', response.status, errBody)
+      return { ok: false, error: errBody.error || `Save failed (${response.status})` }
+    }
+
+    const data = await response.json().catch(() => ({} as { product?: any }))
+    if (data.product) {
+      const normalized = normalizeProduct(data.product)
+      setCustomProducts((prev) => [normalized, ...prev.filter((p) => p.id !== normalized.id)])
+      return { ok: true }
+    }
+
+    return { ok: false, error: 'Server did not return the saved product.' }
   }
 
-  const updateProduct = (id: string, data: Partial<NewProductInput>) => {
+  const updateProduct = async (id: string, data: Partial<NewProductInput>): Promise<{ ok: boolean; error?: string }> => {
     const images =
       data.images && data.images.length > 0
         ? data.images
@@ -338,58 +358,76 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
           ? data.imageFiles
           : undefined
 
-    fetch(`/api/products/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...data,
-        images,
-        image: images ? images[0] : undefined,
-        priceCents: data.priceCents,
-        listingPriceCents: data.listingPriceCents,
-        discountPercent: data.discountPercent,
-        sku: data.sku,
-        reorderLevel: data.reorderLevel,
-        lowStockThreshold: data.lowStockThreshold,
-        type: data.type,
-        variants: data.variants,
-        media: data.media,
-        seoTitle: data.seoTitle,
-        seoDescription: data.seoDescription,
-        canonicalUrl: data.canonicalUrl,
-        weightGrams: data.weightGrams,
-        lengthCm: data.lengthCm,
-        widthCm: data.widthCm,
-        heightCm: data.heightCm,
-        hsnCode: data.hsnCode,
-        fragile: data.fragile,
-      }),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error('Failed to update product')
-        const payload = await res.json()
-        const normalized = normalizeProduct(payload.product)
-        setCustomProducts((prev) => prev.map((p) => (p.id === id ? normalized : p)))
-      })
-      .catch((err) => console.error('Failed to update product in DB', err))
-
-    setCustomProducts((prev) =>
-      prev.map((prod) => {
-        if (prod.id !== id) return prod
-        return {
-      source: "db",
-          ...prod,
+    let response: Response
+    try {
+      response = await fetch(`/api/products/${id}`, {
+        method: 'PATCH',
+        headers: await buildAuthHeaders(),
+        body: JSON.stringify({
           ...data,
-          images: images || prod.images,
-          image: images ? images[0] : prod.image,
-        }
+          images,
+          image: images ? images[0] : undefined,
+          priceCents: data.priceCents,
+          listingPriceCents: data.listingPriceCents,
+          discountPercent: data.discountPercent,
+          sku: data.sku,
+          reorderLevel: data.reorderLevel,
+          lowStockThreshold: data.lowStockThreshold,
+          type: data.type,
+          variants: data.variants,
+          media: data.media,
+          seoTitle: data.seoTitle,
+          seoDescription: data.seoDescription,
+          canonicalUrl: data.canonicalUrl,
+          weightGrams: data.weightGrams,
+          lengthCm: data.lengthCm,
+          widthCm: data.widthCm,
+          heightCm: data.heightCm,
+          hsnCode: data.hsnCode,
+          fragile: data.fragile,
+        }),
       })
-    )
+    } catch (err) {
+      console.error('Failed to reach /api/products/[id]', err)
+      return { ok: false, error: 'Network error. Check your connection.' }
+    }
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({} as { error?: string }))
+      console.error('updateProduct server error', response.status, errBody)
+      return { ok: false, error: errBody.error || `Update failed (${response.status})` }
+    }
+
+    const payload = await response.json().catch(() => ({} as { product?: any }))
+    if (payload.product) {
+      const normalized = normalizeProduct(payload.product)
+      setCustomProducts((prev) => prev.map((p) => (p.id === id ? normalized : p)))
+      return { ok: true }
+    }
+
+    return { ok: false, error: 'Server did not return the updated product.' }
   }
 
-  const deleteProduct = (id: string) => {
+  const deleteProduct = async (id: string): Promise<{ ok: boolean; error?: string }> => {
+    let response: Response
+    try {
+      response = await fetch(`/api/products/${id}`, {
+        method: 'DELETE',
+        headers: await buildAuthHeaders(),
+      })
+    } catch (err) {
+      console.error('Failed to reach DELETE /api/products/[id]', err)
+      return { ok: false, error: 'Network error. Check your connection.' }
+    }
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({} as { error?: string }))
+      console.error('deleteProduct server error', response.status, errBody)
+      return { ok: false, error: errBody.error || `Delete failed (${response.status})` }
+    }
+
     setCustomProducts((prev) => prev.filter((p) => p.id !== id))
-    fetch(`/api/products/${id}`, { method: 'DELETE' }).catch((err) => console.error('Failed to delete product in DB', err))
+    return { ok: true }
   }
 
   const addCategory = (data: { name: string; description?: string }): Category => {

@@ -29,6 +29,7 @@ export default function ListingsPage() {
   const [highlight, setHighlight] = useState<HighlightFilter>('all')
   const [importStatus, setImportStatus] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
+  const [deleteStatus, setDeleteStatus] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isLoading && (!user || user.role?.toLowerCase() !== 'admin')) {
@@ -172,6 +173,12 @@ export default function ListingsPage() {
             Add listing
           </Link>
       </div>
+
+        {deleteStatus && (
+          <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-100 px-3 py-2 rounded-lg">
+            {deleteStatus}
+          </div>
+        )}
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -383,8 +390,10 @@ export default function ListingsPage() {
                       Edit
                     </Link>
                     <button
-                      onClick={() => {
-                        if (window.confirm('Delete this listing?')) deleteProduct(product.id)
+                      onClick={async () => {
+                        if (!window.confirm('Delete this listing?')) return
+                        const result = await deleteProduct(product.id)
+                        if (!result.ok) setDeleteStatus(result.error || 'Delete failed')
                       }}
                       className="text-red-600 text-xs border border-red-200 rounded-lg px-2 py-1 hover:bg-red-50"
                     >

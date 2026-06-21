@@ -15,6 +15,8 @@ export default function NewListingPage() {
   const { user, isLoading } = useAuth()
   const { categories, addProduct } = useCatalog()
   const [savedMessage, setSavedMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const [formResetKey, setFormResetKey] = useState(0)
 
   useEffect(() => {
@@ -25,8 +27,11 @@ export default function NewListingPage() {
 
   const hasCategories = useMemo(() => categories.length > 0 && categories[0].subcategories.length > 0, [categories])
 
-  const handleCreate = (data: ListingFormState) => {
-    addProduct({
+  const handleCreate = async (data: ListingFormState) => {
+    setSubmitting(true)
+    setSavedMessage(null)
+    setErrorMessage(null)
+    const result = await addProduct({
       name: data.name.trim(),
       description: data.description.trim(),
       categoryId: data.categoryId,
@@ -55,8 +60,13 @@ export default function NewListingPage() {
       hsnCode: data.hsnCode,
       fragile: data.fragile,
     })
-    setSavedMessage('Saved. Add another or jump to listings.')
-    setFormResetKey((prev) => prev + 1)
+    setSubmitting(false)
+    if (result.ok) {
+      setSavedMessage('Saved to MongoDB. Add another or jump to listings.')
+      setFormResetKey((prev) => prev + 1)
+    } else {
+      setErrorMessage(result.error || 'Save failed. Please try again.')
+    }
   }
 
   if (!user || user.role?.toLowerCase() !== 'admin') {
@@ -96,6 +106,12 @@ export default function NewListingPage() {
           </div>
         )}
 
+        {errorMessage && (
+          <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-100 px-3 py-2 rounded-lg">
+            {errorMessage}
+          </div>
+        )}
+
         {!hasCategories ? (
           <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6 text-sm text-gray-600">
             Add a category and subcategory before creating products.
@@ -107,7 +123,7 @@ export default function NewListingPage() {
               <h2 className="text-xl font-semibold text-gray-900">Product basics</h2>
               <p className="text-gray-600 text-sm">Name, image, category, description, features - nothing else required.</p>
             </div>
-            <ListingForm key={formResetKey} mode="create" categories={categories} onSubmit={handleCreate} primaryLabel="Save listing" />
+            <ListingForm key={formResetKey} mode="create" categories={categories} onSubmit={handleCreate} primaryLabel="Save listing" submitting={submitting} />
           </div>
         )}
       </main>

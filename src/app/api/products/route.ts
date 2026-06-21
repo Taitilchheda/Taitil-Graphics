@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { resolveHsnCode } from '@/lib/hsn'
 import { jsonWithCache } from '@/lib/response-cache'
 import { getAllProducts } from '@/data/products'
+import { requireAdmin } from '@/lib/server-auth'
 
 const computeDiscountPercent = (mrpCents: number, listingCents: number) => {
   if (mrpCents <= 0) return 0
@@ -139,6 +140,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if (auth instanceof NextResponse) return auth
   try {
     const body = await request.json()
     const {
