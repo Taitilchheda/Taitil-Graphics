@@ -20,8 +20,8 @@ interface User {
 
 interface AuthContextType {
   user: User | null
-  sendOtp: (email: string, purpose?: 'login' | 'signup') => Promise<boolean>
-  verifyOtp: (email: string, otp: string, profile?: Partial<User>, purpose?: 'login' | 'signup') => Promise<{ ok: boolean; error?: string }>
+  sendOtp: (phone: string, purpose?: 'login' | 'signup') => Promise<{ ok: boolean; devCode?: string; message?: string; error?: string }>
+  verifyOtp: (phone: string, otp: string, profile?: Partial<User>, purpose?: 'login' | 'signup') => Promise<{ ok: boolean; error?: string }>
   loginWithPassword: (email: string, password: string) => Promise<boolean>
   adminLogin: (email: string, password: string) => Promise<boolean>
   registerWithPassword: (input: {
@@ -61,26 +61,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  const sendOtp = async (email: string, purpose: 'login' | 'signup' = 'login'): Promise<boolean> => {
+  const sendOtp = async (phone: string, purpose: 'login' | 'signup' = 'login'): Promise<{ ok: boolean; devCode?: string; message?: string; error?: string }> => {
     try {
       const response = await fetch('/api/auth/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, purpose }),
+        body: JSON.stringify({ phone, purpose }),
       })
-      return response.ok
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        return { ok: false, error: payload.error || 'Failed to send OTP.' }
+      }
+      const data = await response.json().catch(() => ({}))
+      return { ok: true, devCode: data.devCode, message: data.message }
     } catch (error) {
       console.error('Send OTP error:', error)
-      return false
+      return { ok: false, error: 'Failed to send OTP.' }
     }
   }
 
-  const verifyOtp = async (email: string, otp: string, profile?: Partial<User>, purpose: 'login' | 'signup' = 'login'): Promise<{ ok: boolean; error?: string }> => {
+  const verifyOtp = async (phone: string, otp: string, profile?: Partial<User>, purpose: 'login' | 'signup' = 'login'): Promise<{ ok: boolean; error?: string }> => {
     try {
       const response = await fetch('/api/auth/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp, purpose, ...profile }),
+        body: JSON.stringify({ phone, otp, purpose, ...profile }),
       })
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))

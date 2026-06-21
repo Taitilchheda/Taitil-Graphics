@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { otpSendSchema } from '@/lib/validators'
 import { rateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit'
+import { sendOtp, isOtpDevFallback } from '@/lib/otp'
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
@@ -28,32 +29,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Too many OTP requests for this number.' }, { status: 429 })
   }
 
-  const baseUrl = process.env.OTP_SERVICE_URL
-  if (!baseUrl) {
-    return NextResponse.json({ error: 'OTP service not configured' }, { status: 500 })
+  // The OTP_SERVICE_URL upstream has been unreliable; we now generate
+  // the code locally and log it. The env var is left in place so a real
+  // provider can be re-pointed here later.
+  if (process.env.OTP_SERVICE_URL && process.env.NODE_ENV === 'production') {
+    console.warn(
+      '[otp/send] OTP_SERVICE_URL is set but unused — local generator is active. ' +
+        'Set OTP_DEV_FALLBACK=false and rewire sendOtp in src/lib/otp.ts to re-enable the upstream.',
+    )
   }
 
-  try {
-    const response = await fetch(`${baseUrl}/api/otp/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phone,
-        type: 'numeric',
-        organization: 'Taitil Graphics',
-        subject: purpose === 'register' ? 'Verify your phone to create an account' : 'Your Taitil Graphics login code',
-      }),
-    })
-
-    if (!response.ok) {
-      const text = await response.text()
-      console.error('OTP service error', text)
-      return NextResponse.json({ error: 'OTP service error' }, { status: 502 })
-    }
-
-    return NextResponse.json({ ok: true })
-  } catch (error) {
-    console.error('OTP send error', error)
+  const result = await sendOtp({ phone, purpose })
+  if (!result.ok) {
     return NextResponse.json({ error: 'Failed to send OTP' }, { status: 500 })
   }
+
+  const devFallback = isOtpDevFallback()
+  return NextResponse.json({
+    ok: true,
+    // Echo the code back in dev/fallback mode so the dev UI can show it.
+    // Never returned in production unless OTP_DEV_FALLBACK is explicitly on.
+    devCode: devFallback ? result.code : undefined,
+    message: devFallback
+      ? 'OTP generated. Check the server console (or the dev code above) to read it.'
+      : 'OTP sent.',
+  })
 }

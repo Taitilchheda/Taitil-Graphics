@@ -4,15 +4,20 @@ import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/components/providers/AuthProvider'
-import { Eye, EyeOff, Mail, Lock, ShieldCheck, Store } from 'lucide-react'
+import { Eye, EyeOff, Mail, Phone, Lock, ShieldCheck, Store } from 'lucide-react'
 
-// Login supports BOTH email-OTP and password for retailer accounts.
-// The OTP service at otp-service-beta.vercel.app is the source of truth
-// for OTP delivery — it sends an SMS to the user's phone. Password login
-// works against the bcrypt-hashed password stored on the User record.
+// Login supports BOTH phone-OTP and password for retailer accounts.
+// OTP delivery: when OTP_DEV_FALLBACK=true (or NODE_ENV !== production),
+// the server generates the code locally, stores its SHA-256 hash in
+// the OtpCode Prisma model, prints the plaintext to the server
+// console, and returns it in the response so the UI can display it.
+// In production without the fallback flag, only the server log has
+// the code — wire OTP_SERVICE_URL to a real provider to deliver by SMS.
+// Password login works against the bcrypt-hashed password on User.
 
 function LoginPageContent() {
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [otp, setOtp] = useState('')
   const [linkPending, setLinkPending] = useState(false)
@@ -51,7 +56,12 @@ function LoginPageContent() {
           setIsLoading(false)
           return
         }
-        result = await verifyOtp(email, otp, undefined, 'login')
+        if (!phone) {
+          setError('Enter your phone number so we know where the OTP was sent.')
+          setIsLoading(false)
+          return
+        }
+        result = await verifyOtp(phone, otp, undefined, 'login')
         ok = result.ok
       }
     }
@@ -86,13 +96,18 @@ function LoginPageContent() {
       setError('Please enter your email first.')
       return
     }
+    if (!phone) {
+      setError('Please enter the phone number linked to your account.')
+      return
+    }
     setLinkPending(true)
-    const sent = await sendOtp(email, 'login')
+    const result = await sendOtp(phone, 'login')
     setLinkPending(false)
-    if (!sent) {
-      setError('Unable to send OTP. Please try again.')
+    if (!result.ok) {
+      setError(result.error || 'Unable to send OTP. Please try again.')
     } else {
-      setSuccess('OTP sent to your registered phone number.')
+      const devHint = result.devCode ? ` (dev code: ${result.devCode})` : ''
+      setSuccess(`${result.message || 'OTP sent to your registered phone number.'}${devHint}`)
     }
   }
 
@@ -163,6 +178,26 @@ function LoginPageContent() {
                 </div>
                 {!usePasswordLogin && (
                   <>
+                    <div>
+                      <label htmlFor="otp-phone" className="block text-sm font-medium text-gray-700 mb-2">
+                        Phone number
+                      </label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                          id="otp-phone"
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="input-field pl-10"
+                          placeholder="e.g. +919876543210"
+                          required
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        The 6-digit code is generated on the server. In development, the code is printed in the dev server console; in production, it is sent to this number.
+                      </p>
+                    </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <button
                         type="button"
