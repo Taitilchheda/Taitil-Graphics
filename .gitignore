@@ -45,6 +45,14 @@ Thumbs.db
 !prisma/schema.prisma
 !package-lock.json
 
+# Firebase service-account key files (downloaded JSON). The directory
+# name itself isn't matched by *.json, so we add it explicitly. Never
+# commit these — they grant project-level access to Firebase.
+firebase key/
+firebase-adminsdk-*.json
+service-account*.json
+*firebase-adminsdk*.json
+
 # Prisma local dev DB
 prisma/dev.db*
 prisma/*.db-journal
