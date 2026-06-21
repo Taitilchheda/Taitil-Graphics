@@ -96,6 +96,8 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
   }
 
   const [form, setForm] = useState<ListingFormState>(baseState)
+  const [imageProcessing, setImageProcessing] = useState(false)
+  const [imageWarning, setImageWarning] = useState<string | null>(null)
 
   useEffect(() => {
     setForm((prev) => ({
@@ -137,25 +139,98 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
     })
   }
 
-  const handleFiles = (fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0) return
-    const readers = Array.from(fileList).map(
-      (file) =>
-        new Promise<string>((resolve) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '')
-          reader.onerror = () => resolve('')
-          reader.readAsDataURL(file)
-        }),
-    )
-    Promise.all(readers).then((urls) => {
-      const valid = urls.filter(Boolean)
-      if (!valid.length) return
-      setForm((prev) => ({
-        ...prev,
-        images: [...prev.images, ...valid],
-      }))
+  // Resize an image file to fit within MAX_DIMENSION px on its longest
+  // side and re-encode as JPEG at MAX_QUALITY. Returns a base64 data
+  // URL. The point is to keep the JSON payload under Vercel's 4.5 MB
+  // request body limit — a single un-resized phone photo can hit 5 MB
+  // before it ever reaches the route handler. We always emit JPEG so
+  // the output is deterministic in size; PNG with alpha is rare for
+  // product photography and JPEG gives us ~5x better compression.
+  const MAX_DIMENSION = 1200
+  const MAX_QUALITY = 0.82
+  const MAX_IMAGES = 6
+
+  const fileToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '')
+      reader.onerror = () => resolve('')
+      reader.readAsDataURL(file)
     })
+
+  const resizeDataUrl = (dataUrl: string): Promise<string> =>
+    new Promise((resolve) => {
+      if (typeof document === 'undefined' || typeof Image === 'undefined') {
+        resolve(dataUrl)
+        return
+      }
+      const img = new Image()
+      img.onload = () => {
+        try {
+          const longest = Math.max(img.naturalWidth, img.naturalHeight)
+          if (longest <= MAX_DIMENSION) {
+            // Already small enough — just convert to JPEG to normalize.
+            const canvas = document.createElement('canvas')
+            canvas.width = img.naturalWidth
+            canvas.height = img.naturalHeight
+            const ctx = canvas.getContext('2d')
+            if (!ctx) {
+              resolve(dataUrl)
+              return
+            }
+            ctx.drawImage(img, 0, 0)
+            resolve(canvas.toDataURL('image/jpeg', MAX_QUALITY))
+            return
+          }
+          const scale = MAX_DIMENSION / longest
+          const w = Math.round(img.naturalWidth * scale)
+          const h = Math.round(img.naturalHeight * scale)
+          const canvas = document.createElement('canvas')
+          canvas.width = w
+          canvas.height = h
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            resolve(dataUrl)
+            return
+          }
+          ctx.drawImage(img, 0, 0, w, h)
+          resolve(canvas.toDataURL('image/jpeg', MAX_QUALITY))
+        } catch {
+          // Some browsers throw on tainted canvases. Fall back to the
+          // original data URL rather than losing the image entirely.
+          resolve(dataUrl)
+        }
+      }
+      img.onerror = () => resolve(dataUrl)
+      img.src = dataUrl
+    })
+
+  const handleFiles = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return
+    const files = Array.from(fileList)
+    setImageProcessing(true)
+    try {
+      const dataUrls = await Promise.all(files.map(fileToDataUrl))
+      const resized = await Promise.all(
+        dataUrls.filter(Boolean).map((d) => resizeDataUrl(d)),
+      )
+      setForm((prev) => {
+        const remainingSlots = Math.max(0, MAX_IMAGES - prev.images.length)
+        const accepted = resized.filter(Boolean).slice(0, remainingSlots)
+        if (accepted.length === 0) {
+          setImageWarning(
+            prev.images.length >= MAX_IMAGES
+              ? `You can attach at most ${MAX_IMAGES} images per listing.`
+              : null,
+          )
+          return prev
+        }
+        setImageWarning(null)
+        return { ...prev, images: [...prev.images, ...accepted] }
+      })
+    } finally {
+      setImageProcessing(false)
+    }
   }
 
   const moveImage = (index: number, direction: 'up' | 'down') => {
@@ -169,6 +244,7 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
   }
 
   const removeImage = (index: number) => {
+    setImageWarning(null)
     setForm((prev) => {
       const images = prev.images.filter((_, i) => i !== index)
       return { ...prev, images: images.length ? images : [DEFAULT_IMAGE] }
@@ -359,19 +435,27 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
             }}
           >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <p className="text-sm text-gray-600">Primary image is first. Drag files here or upload to add more.</p>
-              <label className="inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm cursor-pointer bg-white hover:bg-gray-100">
+              <p className="text-sm text-gray-600">
+                Primary image is first. Images auto-resize to 1200px max (JPEG) — up to 6 per listing.
+              </p>
+              <label className={`inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm cursor-pointer bg-white ${imageProcessing ? 'opacity-50 pointer-events-none' : 'hover:bg-gray-100'}`}>
                 <ImagePlus className="w-4 h-4 text-primary-600" />
-                <span>Upload</span>
+                <span>{imageProcessing ? 'Processing...' : 'Upload'}</span>
                 <input
                   type="file"
                   multiple
                   accept="image/*"
                   onChange={(e) => handleFiles(e.target.files)}
                   className="hidden"
+                  disabled={imageProcessing}
                 />
               </label>
             </div>
+            {imageWarning && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1 rounded">
+                {imageWarning}
+              </p>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
               {form.images.map((img, idx) => (
                 <div key={idx} className="relative border rounded-lg overflow-hidden bg-white">
