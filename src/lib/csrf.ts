@@ -107,10 +107,15 @@ const SECURITY_HEADERS: Record<string, string> = {
   //   - 'unsafe-eval' for Next.js dev (dev only) — blocked in production
   //   - wa.me for WhatsApp CTAs
   //   - google.com/maps: optional embed in product descriptions
+  //   - res.cloudinary.com for admin-uploaded product videos + their
+  //     auto-generated poster frames
   // NOTE: tighten further once we know the full script inventory.
   'Content-Security-Policy': [
     "default-src 'self'",
     "img-src 'self' data: blob: https:",
+    // media-src is not set above, so it falls back to default-src 'self',
+    // which would block Cloudinary video playback. Explicit allowlist.
+    "media-src 'self' blob: https://res.cloudinary.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     "style-src 'self' 'unsafe-inline'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://maps.google.com",

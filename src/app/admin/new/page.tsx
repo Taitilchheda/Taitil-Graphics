@@ -49,7 +49,7 @@ export default function NewListingPage() {
       lowStockThreshold: data.lowStockThreshold,
       type: data.type,
       variants: data.variants,
-      media: null,
+      media: data.media ?? null,
       seoTitle: data.seoTitle,
       seoDescription: data.seoDescription,
       canonicalUrl: data.canonicalUrl,

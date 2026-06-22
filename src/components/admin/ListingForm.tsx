@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Category } from '@/data/products'
-import { Save, PlusCircle, ImagePlus, ArrowUp, XCircle, Sparkles } from 'lucide-react'
+import { Save, PlusCircle, ImagePlus, ArrowUp, XCircle, Sparkles, Video } from 'lucide-react'
+
+// Stored on Product.media. We never read this in the listing grid — it's
+// only used on the public product page, where it renders as a <video>
+// above the image gallery.
+type ProductMedia = { videoUrl?: string; videoPoster?: string }
 
 export type ListingFormState = {
   name: string
@@ -10,6 +15,7 @@ export type ListingFormState = {
   categoryId: string
   subcategoryId: string
   images: string[]
+  media?: ProductMedia | null
   features: string
   priceCents: number
   listingPriceCents: number
@@ -73,6 +79,8 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
         : (initialState as any)?.image
           ? [(initialState as any).image]
           : undefined) || [DEFAULT_IMAGE],
+    // Preserve any existing video on edit. New listings start with no video.
+    media: (initialState as any)?.media ?? null,
     features: 'Premium finish,Fast delivery,Custom design',
     priceCents: initialState?.priceCents ?? 0,
     listingPriceCents: initialListingCents,
@@ -98,6 +106,8 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
   const [form, setForm] = useState<ListingFormState>(baseState)
   const [imageProcessing, setImageProcessing] = useState(false)
   const [imageWarning, setImageWarning] = useState<string | null>(null)
+  const [videoUploading, setVideoUploading] = useState(false)
+  const [videoWarning, setVideoWarning] = useState<string | null>(null)
 
   useEffect(() => {
     setForm((prev) => ({
@@ -249,6 +259,64 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
       const images = prev.images.filter((_, i) => i !== index)
       return { ...prev, images: images.length ? images : [DEFAULT_IMAGE] }
     })
+  }
+
+  // Product video uploader. Streams the file to /api/admin/upload-video
+  // which forwards it to Cloudinary. Returns { url, poster }; we only
+  // need the URL here (the poster is shown as the <video poster> on
+  // the public product page).
+  //
+  // We cap at 30 MB here to match the server-side cap and give a fast
+  // error message in the browser. The server enforces this again.
+  const MAX_VIDEO_BYTES = 30 * 1024 * 1024
+  const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm']
+  const VIDEO_EXTS = ['mp4', 'mov', 'webm', 'm4v']
+
+  const uploadVideo = async (file: File) => {
+    setVideoWarning(null)
+    const lowerName = file.name.toLowerCase()
+    const ext = lowerName.includes('.') ? lowerName.split('.').pop() || '' : ''
+    const mimeOk = VIDEO_TYPES.includes(file.type.toLowerCase())
+    const extOk = VIDEO_EXTS.includes(ext)
+    if (!mimeOk && !extOk) {
+      setVideoWarning('Unsupported video type. Use MP4, MOV, or WebM.')
+      return
+    }
+    if (file.size > MAX_VIDEO_BYTES) {
+      setVideoWarning(`Video too large. Max ${MAX_VIDEO_BYTES / 1024 / 1024} MB.`)
+      return
+    }
+
+    setVideoUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/admin/upload-video', {
+        method: 'POST',
+        body: fd,
+        // Do NOT set Content-Type — the browser will set the
+        // multipart boundary automatically.
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.url) {
+        setVideoWarning(data?.error || 'Upload failed. Please try again.')
+        return
+      }
+      setForm((prev) => ({
+        ...prev,
+        media: { videoUrl: data.url, videoPoster: data.poster || prev.media?.videoPoster },
+      }))
+    } catch (err) {
+      console.error('Video upload error', err)
+      setVideoWarning('Network error. Please try again.')
+    } finally {
+      setVideoUploading(false)
+    }
+  }
+
+  const removeVideo = () => {
+    setVideoWarning(null)
+    setForm((prev) => ({ ...prev, media: null }))
   }
 
   const generateDescription = () => {
@@ -488,6 +556,66 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <label className="text-sm text-gray-700">Product video (optional)</label>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <p className="text-sm text-gray-600">
+                One short MP4/MOV/WebM up to 30 MB. Plays above the image gallery on the product page.
+              </p>
+              {form.media?.videoUrl ? (
+                <button
+                  type="button"
+                  onClick={removeVideo}
+                  className="inline-flex items-center gap-2 px-3 py-2 border border-red-200 text-red-700 rounded-lg text-sm hover:bg-red-50"
+                >
+                  <XCircle className="w-4 h-4" /> Remove video
+                </button>
+              ) : (
+                <label
+                  className={`inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm cursor-pointer bg-white ${
+                    videoUploading ? 'opacity-50 pointer-events-none' : 'hover:bg-gray-100'
+                  }`}
+                >
+                  <Video className="w-4 h-4 text-primary-600" />
+                  <span>{videoUploading ? 'Uploading…' : 'Upload video'}</span>
+                  <input
+                    type="file"
+                    accept="video/mp4,video/quicktime,video/webm"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      // Reset the input so re-picking the same file fires `change` again.
+                      e.target.value = ''
+                      if (f) uploadVideo(f)
+                    }}
+                    className="hidden"
+                    disabled={videoUploading}
+                  />
+                </label>
+              )}
+            </div>
+            {videoWarning ? (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1 rounded">
+                {videoWarning}
+              </p>
+            ) : null}
+            {form.media?.videoUrl ? (
+              <div className="rounded-lg overflow-hidden border border-gray-200 bg-white">
+                <video
+                  src={form.media.videoUrl}
+                  controls
+                  muted
+                  playsInline
+                  preload="metadata"
+                  className="w-full max-h-64"
+                />
+                <p className="text-[11px] text-gray-500 px-2 py-1 truncate">
+                  Hosted on Cloudinary — {form.media.videoUrl}
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="space-y-2 md:col-span-2">

@@ -43,6 +43,8 @@ export default function ProductPage() {
   }, [product, getProductsByCategory])
 
   const videoUrl = (product as any)?.media?.videoUrl || (product as any)?.videoUrl
+  // Cloudinary's eager JPG — falls back to the first product image if absent.
+  const videoPoster = (product as any)?.media?.videoPoster || (product as any)?.videoPoster || null
 
   const gallery = useMemo(() => {
     if (!product) return []
@@ -378,8 +380,17 @@ Contact: ${leadForm.name} (${leadForm.phone})`
           <div className="space-y-4">
             {videoUrl ? (
               <div className="rounded-lg border border-gray-200 bg-white p-3">
-                <video controls className="w-full rounded-lg">
+                <video
+                  controls
+                  playsInline
+                  muted
+                  preload="metadata"
+                  poster={videoPoster || gallery[0] || undefined}
+                  aria-label="Product video"
+                  className="w-full rounded-lg"
+                >
                   <source src={videoUrl} />
+                  Your browser does not support embedded video.
                 </video>
               </div>
             ) : null}
