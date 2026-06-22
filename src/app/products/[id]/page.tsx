@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
@@ -55,10 +55,10 @@ export default function ProductPage() {
     const explicit = (product as any)?.media?.videoPoster || (product as any)?.videoPoster
     if (explicit) return explicit
     if (!videoUrl || !videoUrl.includes('/video/upload/')) return null
-    // Take a frame near the start (so_2 = start offset 2 seconds), crop
+    // Take a frame at the start (so_0 = start offset 0 seconds), crop
     // fill to 800x800, and switch the file extension to .jpg.
     return videoUrl
-      .replace('/video/upload/', '/video/upload/so_2/c_fill,w_800,h_800/')
+      .replace('/video/upload/', '/video/upload/so_0/c_fill,w_800,h_800/')
       .replace(/\.(mp4|mov|webm|m4v)(\?.*)?$/, '.jpg$2')
   }, [product, videoUrl])
 
@@ -67,6 +67,11 @@ export default function ProductPage() {
     if (product.images && product.images.length) return product.images
     return [product.image]
   }, [product])
+
+  // Ref to the currently-mounted main-view video so we can call .play()
+  // directly from the thumbnail click handler. This works on Safari iOS,
+  // which ignores `autoPlay` unless .play() is invoked from the gesture.
+  const mainVideoRef = useRef<HTMLVideoElement | null>(null)
 
   // Unified media list: every image, then the video (if any) as the
   // last item. The main view and the thumbnail strip iterate the same
@@ -87,6 +92,25 @@ export default function ProductPage() {
   useEffect(() => {
     if (selectedIndex >= mediaItems.length) setSelectedIndex(0)
   }, [mediaItems, selectedIndex])
+
+  // When the selected slot is a video, ask the player to play. The
+  // `autoPlay` attribute is a backstop for desktop browsers; calling
+  // .play() explicitly is what unblocks Safari iOS (it requires the
+  // play() call to happen inside the user gesture, which the
+  // thumbnail click is).
+  useEffect(() => {
+    const current = mediaItems[selectedIndex]
+    if (!current || current.kind !== 'video') return
+    const el = mainVideoRef.current
+    if (!el) return
+    const playPromise = el.play()
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => {
+        // Autoplay was blocked (e.g. browser policy without a recent
+        // gesture). The user can still press the native play button.
+      })
+    }
+  }, [selectedIndex, mediaItems])
 
   useEffect(() => {
     if (product) {
@@ -423,10 +447,11 @@ Contact: ${leadForm.name} (${leadForm.phone})`
               {mediaItems[selectedIndex]?.kind === 'video' ? (
                 <video
                   key={mediaItems[selectedIndex].src}
+                  ref={mainVideoRef}
                   controls
+                  autoPlay
                   playsInline
-                  muted
-                  preload="metadata"
+                  preload="auto"
                   poster={mediaItems[selectedIndex].poster || gallery[0] || undefined}
                   aria-label="Product video"
                   className="w-full h-full object-contain bg-white"
