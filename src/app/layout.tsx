@@ -14,6 +14,15 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Taitil Graphics - Professional Printing & Design Services',
   description: 'Your one-stop solution for visiting cards, wedding invitations, marketing materials, packaging, and custom design services.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon0.svg', type: 'image/svg+xml' },
+      { url: '/icon1.png', type: 'image/png' }
+    ],
+    apple: '/apple-icon.png'
+  },
+  manifest: '/manifest.json'
 }
 
 export default function RootLayout({
