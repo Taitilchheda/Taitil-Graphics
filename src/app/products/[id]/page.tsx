@@ -43,8 +43,24 @@ export default function ProductPage() {
   }, [product, getProductsByCategory])
 
   const videoUrl = (product as any)?.media?.videoUrl || (product as any)?.videoUrl
-  // Cloudinary's eager JPG — falls back to the first product image if absent.
-  const videoPoster = (product as any)?.media?.videoPoster || (product as any)?.videoPoster || null
+  // Cloudinary doesn't generate a poster at upload time (we drop the
+  // eager transform on the upload route — it was failing to sign).
+  // Instead we synthesize a poster URL by transforming the video
+  // asset on the fly. The pattern is to insert a transform segment
+  // right after `/upload/`: `.../upload/so_2/c_fill,w_800,h_800/v.../...mp4`
+  // becomes `.../upload/so_2/c_fill,w_800,h_800/v.../...jpg` — Cloudinary
+  // returns the second-frame JPG. Falls back to the explicit poster
+  // if a future migration sets one, then to the first product image.
+  const videoPoster = useMemo(() => {
+    const explicit = (product as any)?.media?.videoPoster || (product as any)?.videoPoster
+    if (explicit) return explicit
+    if (!videoUrl || !videoUrl.includes('/video/upload/')) return null
+    // Take a frame near the start (so_2 = start offset 2 seconds), crop
+    // fill to 800x800, and switch the file extension to .jpg.
+    return videoUrl
+      .replace('/video/upload/', '/video/upload/so_2/c_fill,w_800,h_800/')
+      .replace(/\.(mp4|mov|webm|m4v)(\?.*)?$/, '.jpg$2')
+  }, [product, videoUrl])
 
   const gallery = useMemo(() => {
     if (!product) return []

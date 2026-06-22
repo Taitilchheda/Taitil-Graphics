@@ -10,10 +10,18 @@
 //   1. Admin clicks "Upload video".
 //   2. Browser POSTs to /api/admin/sign-video-upload (no body needed).
 //   3. We verify admin auth, then sign a payload with cloud_name,
-//      api_key, timestamp, folder, and eager transformations.
+//      api_key, timestamp, and folder.
 //   4. Browser POSTs the file + signature directly to Cloudinary.
-//   5. Cloudinary returns the upload result; browser extracts url +
-//      poster (from eager).
+//   5. Cloudinary returns the upload result; browser extracts the URL.
+//
+// We do NOT request an eager JPG poster at upload time. Cloudinary's
+// `eager` param has caused two consecutive signature errors in this
+// project (eager-as-string and eager-as-JSON-array both fail because
+// Cloudinary expects a specific `/`-separated format for transformations
+// on video uploads, and the format is finicky to sign correctly). The
+// public product page derives a poster URL on the fly by transforming
+// the video URL (see src/app/products/[id]/page.tsx) — that gives us
+// the same result without the upload-time complication.
 //
 // Why signed? Without a signature, anyone with our cloud_name could
 // upload to our Cloudinary account. The signature is a SHA-1 of the
@@ -62,26 +70,14 @@ export async function POST(_request: NextRequest) {
   configureCloudinary()
 
   const timestamp = Math.round(Date.now() / 1000)
-  // Cloudinary's `eager` parameter is an array of transformations to
-  // apply synchronously during upload. We want a JPG poster frame at
-  // 800x800 cropped fill. Per the docs, eager must be a JSON-stringified
-  // array (the comma-separated string form we tried first parses as a
-  // single chained transformation, which fails on `e_jpg`).
-  const eager = [
-    {
-      format: 'jpg',
-      transformation: [{ crop: 'fill', width: 800, height: 800, gravity: 'auto' }],
-    },
-  ]
   const paramsToSign = {
     folder: 'taitil-products/videos',
     timestamp,
-    eager: JSON.stringify(eager),
   }
 
   // cloudinary.utils.api_sign_request returns the hex SHA-1 signature.
   // The browser will POST: file=<file>&api_key=<key>&timestamp=<ts>&
-  // folder=<folder>&eager=<json>&signature=<sig> to Cloudinary.
+  // folder=<folder>&signature=<sig> to Cloudinary.
   const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET!)
 
   return NextResponse.json({
@@ -89,7 +85,6 @@ export async function POST(_request: NextRequest) {
     apiKey: process.env.CLOUDINARY_API_KEY,
     timestamp,
     folder: paramsToSign.folder,
-    eager: paramsToSign.eager,
     signature,
     // Cloudinary's upload endpoint. We expose it as a full URL so the
     // browser doesn't have to construct it.

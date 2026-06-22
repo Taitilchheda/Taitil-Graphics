@@ -315,7 +315,6 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
       fd.append('api_key', signData.apiKey)
       fd.append('timestamp', String(signData.timestamp))
       fd.append('folder', signData.folder)
-      fd.append('eager', signData.eager)
       fd.append('signature', signData.signature)
 
       const cloudRes = await fetch(signData.uploadUrl, {
@@ -330,14 +329,13 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
         setVideoWarning(typeof cloudMsg === 'string' ? cloudMsg : 'Upload failed.')
         return
       }
-      // The eager transform ran synchronously on Cloudinary's side —
-      // its first entry has the JPG poster URL.
-      const poster = Array.isArray(cloudData.eager) && cloudData.eager[0]?.secure_url
-        ? cloudData.eager[0].secure_url
-        : undefined
+      // No eager transformation — the public product page derives a
+      // poster URL on the fly by transforming the video URL. We just
+      // keep whatever poster was on the previous media (none for a
+      // new product) and let the render-time transform do the work.
       setForm((prev) => ({
         ...prev,
-        media: { videoUrl: cloudData.secure_url, videoPoster: poster || prev.media?.videoPoster },
+        media: { videoUrl: cloudData.secure_url, videoPoster: prev.media?.videoPoster },
       }))
     } catch (err) {
       console.error('Video upload error', err)
