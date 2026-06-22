@@ -68,6 +68,26 @@ export default function ProductPage() {
     return [product.image]
   }, [product])
 
+  // Unified media list: every image, then the video (if any) as the
+  // last item. The main view and the thumbnail strip iterate the same
+  // array so the video sits inline with the images instead of in a
+  // separate block above them.
+  const mediaItems = useMemo(() => {
+    const items: Array<{ kind: 'image' | 'video'; src: string; poster?: string | null }> = []
+    for (const src of gallery) {
+      if (src) items.push({ kind: 'image', src })
+    }
+    if (videoUrl) {
+      items.push({ kind: 'video', src: videoUrl, poster: videoPoster })
+    }
+    return items
+  }, [gallery, videoUrl, videoPoster])
+
+  // Default to the video if there are no images but a video exists.
+  useEffect(() => {
+    if (selectedIndex >= mediaItems.length) setSelectedIndex(0)
+  }, [mediaItems, selectedIndex])
+
   useEffect(() => {
     if (product) {
       logEvent({ type: 'view', productId, categoryId: product.category, subcategoryId: product.subcategory, label: 'product-page' })
@@ -392,56 +412,77 @@ Contact: ${leadForm.name} (${leadForm.phone})`
 
         {/* Product Details - Vistaprint Style */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Left Side - Product Images */}
+          {/* Left Side - Product Images + Video (continuous) */}
           <div className="space-y-4">
-            {videoUrl ? (
-              <div className="rounded-lg border border-gray-200 bg-white p-3">
+            <div
+              className="aspect-square bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200 group cursor-zoom-in relative"
+              onClick={() => {
+                if (mediaItems[selectedIndex]?.kind === 'image') setShowLightbox(true)
+              }}
+            >
+              {mediaItems[selectedIndex]?.kind === 'video' ? (
                 <video
+                  key={mediaItems[selectedIndex].src}
                   controls
                   playsInline
                   muted
                   preload="metadata"
-                  poster={videoPoster || gallery[0] || undefined}
+                  poster={mediaItems[selectedIndex].poster || gallery[0] || undefined}
                   aria-label="Product video"
-                  className="w-full rounded-lg"
+                  className="w-full h-full object-contain bg-white"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <source src={videoUrl} />
+                  <source src={mediaItems[selectedIndex].src} />
                   Your browser does not support embedded video.
                 </video>
-              </div>
-            ) : null}
-            <div
-              className="aspect-square bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200 group cursor-zoom-in relative"
-              onClick={() => setShowLightbox(true)}
-            >
-              <Image
-                src={gallery[selectedIndex] || "/logo.svg"}
-                alt={product.name}
-                width={800}
-                height={800}
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                className="w-full h-full object-contain bg-white transition-transform duration-500 group-hover:scale-105"
-              />
-              <span className="absolute bottom-2 right-2 text-xs bg-white/80 text-gray-700 px-2 py-1 rounded">Click to zoom</span>
+              ) : (
+                <Image
+                  src={mediaItems[selectedIndex]?.src || "/logo.svg"}
+                  alt={product.name}
+                  width={800}
+                  height={800}
+                  sizes="(min-width: 1024px) 50vw, 100vw"
+                  className="w-full h-full object-contain bg-white transition-transform duration-500 group-hover:scale-105"
+                />
+              )}
+              {mediaItems[selectedIndex]?.kind === 'image' ? (
+                <span className="absolute bottom-2 right-2 text-xs bg-white/80 text-gray-700 px-2 py-1 rounded">Click to zoom</span>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-4 gap-2">
-              {gallery.map((img, idx) => (
+              {mediaItems.map((item, idx) => (
                 <button
                   type="button"
-                  key={idx}
+                  key={`${item.kind}-${item.src}-${idx}`}
                   onClick={() => setSelectedIndex(idx)}
-                  className={`aspect-square rounded border overflow-hidden ${selectedIndex === idx ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200 hover:border-primary-300'} transition`}
-                  title={`View image ${idx + 1}`}
+                  className={`aspect-square rounded border overflow-hidden relative ${selectedIndex === idx ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200 hover:border-primary-300'} transition`}
+                  title={item.kind === 'video' ? 'Play product video' : `View image ${idx + 1}`}
                 >
-                  <Image
-                    src={img || "/logo.svg"}
-                    alt={`${product.name} view ${idx + 1}`}
-                    width={200}
-                    height={200}
-                    sizes="(min-width: 1024px) 12vw, 20vw"
-                    className="w-full h-full object-contain bg-white"
-                  />
+                  {item.kind === 'video' ? (
+                    <>
+                      <Image
+                        src={item.poster || gallery[0] || '/logo.svg'}
+                        alt="Product video thumbnail"
+                        width={200}
+                        height={200}
+                        sizes="(min-width: 1024px) 12vw, 20vw"
+                        className="w-full h-full object-contain bg-white"
+                      />
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <span className="rounded-full bg-white/90 text-gray-900 w-8 h-8 flex items-center justify-center text-xs font-bold">▶</span>
+                      </span>
+                    </>
+                  ) : (
+                    <Image
+                      src={item.src || "/logo.svg"}
+                      alt={`${product.name} view ${idx + 1}`}
+                      width={200}
+                      height={200}
+                      sizes="(min-width: 1024px) 12vw, 20vw"
+                      className="w-full h-full object-contain bg-white"
+                    />
+                  )}
                 </button>
               ))}
             </div>
