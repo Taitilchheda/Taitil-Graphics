@@ -62,17 +62,26 @@ export async function POST(_request: NextRequest) {
   configureCloudinary()
 
   const timestamp = Math.round(Date.now() / 1000)
-  // Match the same params the old streaming upload used so the file
-  // lands in the same place and we get a poster frame in the response.
+  // Cloudinary's `eager` parameter is an array of transformations to
+  // apply synchronously during upload. We want a JPG poster frame at
+  // 800x800 cropped fill. Per the docs, eager must be a JSON-stringified
+  // array (the comma-separated string form we tried first parses as a
+  // single chained transformation, which fails on `e_jpg`).
+  const eager = [
+    {
+      format: 'jpg',
+      transformation: [{ crop: 'fill', width: 800, height: 800, gravity: 'auto' }],
+    },
+  ]
   const paramsToSign = {
     folder: 'taitil-products/videos',
     timestamp,
-    eager: 'e_jpg,c_fill,w_800,h_800,g_auto',
+    eager: JSON.stringify(eager),
   }
 
   // cloudinary.utils.api_sign_request returns the hex SHA-1 signature.
   // The browser will POST: file=<file>&api_key=<key>&timestamp=<ts>&
-  // folder=<folder>&eager=<eager>&signature=<sig> to Cloudinary.
+  // folder=<folder>&eager=<json>&signature=<sig> to Cloudinary.
   const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET!)
 
   return NextResponse.json({
