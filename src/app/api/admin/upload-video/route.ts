@@ -23,6 +23,9 @@ import { v2 as cloudinary } from 'cloudinary'
 import { requireAdmin } from '@/lib/server-auth'
 
 export const runtime = 'nodejs'
+// Never cache uploads — Cloudinary config or env may change between
+// requests, and we don't want a CDN edge to hold onto an error.
+export const dynamic = 'force-dynamic'
 
 const MAX_BYTES = 30 * 1024 * 1024 // 30 MB — well above the 10 MB videos you mentioned
 const ALLOWED_TYPES = new Set(['video/mp4', 'video/quicktime', 'video/webm'])
