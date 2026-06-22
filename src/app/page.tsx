@@ -22,7 +22,7 @@ import {
 
 export default function HomePage() {
   const { user, isLoading } = useAuth()
-  const { categories, newListings, recommendedProducts, hotSellers, allProducts } = useCatalog()
+  const { categories, newListings, recommendedProducts, hotSellers, allProducts, getProductsByCategory } = useCatalog()
   const { logEvent, events } = useAnalytics()
 
   const [heroIndex, setHeroIndex] = useState(0)
@@ -180,7 +180,11 @@ export default function HomePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {categories.map((category) => (
+              {categories.map((category) => {
+                const categoryProducts = getProductsByCategory(category.id);
+                const firstProductImage = categoryProducts.find(p => p.image)?.image;
+                
+                return (
                 <Link
                   key={category.id}
                   href={`/categories/${category.id}`}
@@ -189,7 +193,7 @@ export default function HomePage() {
                 >
                   <div className="aspect-w-16 aspect-h-9">
                     <Image
-                      src={category.subcategories[0]?.products[0]?.image || 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=400&h=300&fit=crop'}
+                      src={firstProductImage || 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=400&h=300&fit=crop'}
                       alt={category.name}
                       width={400}
                       height={250}
@@ -207,7 +211,7 @@ export default function HomePage() {
                     </div>
                   </div>
                 </Link>
-              ))}
+              )})}
             </div>
           </div>
         </section>
