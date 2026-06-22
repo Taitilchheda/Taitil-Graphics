@@ -291,28 +291,53 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
 
     setVideoUploading(true)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      // Send the admin JWT so the proxy's CSRF check exempts this
-      // request (see src/proxy.ts:76 — bearer-authenticated calls
-      // bypass CSRF because the JWT is itself the auth check). We
-      // intentionally do NOT set Content-Type — the browser will add
-      // the multipart boundary automatically.
-      const headers: Record<string, string> = {}
-      if (user?.token) headers['Authorization'] = `Bearer ${user.token}`
-      const res = await fetch('/api/admin/upload-video', {
+      // Step 1: ask our server for a signed Cloudinary upload payload.
+      // The server never sees the file — it just signs params with
+      // the API secret. This gets around Vercel's 4.5 MB function body
+      // limit because the file is uploaded directly to Cloudinary.
+      const signHeaders: Record<string, string> = {}
+      if (user?.token) signHeaders['Authorization'] = `Bearer ${user.token}`
+      const signRes = await fetch('/api/admin/sign-video-upload', {
         method: 'POST',
-        headers,
-        body: fd,
+        headers: signHeaders,
       })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data?.url) {
-        setVideoWarning(data?.error || 'Upload failed. Please try again.')
+      const signData = await signRes.json().catch(() => ({}))
+      if (!signRes.ok || !signData?.uploadUrl || !signData?.signature) {
+        setVideoWarning(signData?.error || 'Could not start upload. Please try again.')
         return
       }
+
+      // Step 2: POST the file directly to Cloudinary. Cloudinary
+      // accepts up to 100 MB raw / 1 GB chunked per file on free tier,
+      // which is well beyond our 30 MB client-side cap.
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('api_key', signData.apiKey)
+      fd.append('timestamp', String(signData.timestamp))
+      fd.append('folder', signData.folder)
+      fd.append('eager', signData.eager)
+      fd.append('signature', signData.signature)
+
+      const cloudRes = await fetch(signData.uploadUrl, {
+        method: 'POST',
+        body: fd,
+        // Do NOT set Content-Type — the browser will add the multipart
+        // boundary automatically.
+      })
+      const cloudData = await cloudRes.json().catch(() => ({}))
+      if (!cloudRes.ok || !cloudData?.secure_url) {
+        const cloudMsg = cloudData?.error?.message || cloudData?.error || 'Upload failed.'
+        setVideoWarning(typeof cloudMsg === 'string' ? cloudMsg : 'Upload failed.')
+        return
+      }
+      // The eager transform ran synchronously on Cloudinary's side —
+      // its first entry has the JPG poster URL.
+      const poster = Array.isArray(cloudData.eager) && cloudData.eager[0]?.secure_url
+        ? cloudData.eager[0].secure_url
+        : undefined
       setForm((prev) => ({
         ...prev,
-        media: { videoUrl: data.url, videoPoster: data.poster || prev.media?.videoPoster },
+        media: { videoUrl: cloudData.secure_url, videoPoster: poster || prev.media?.videoPoster },
       }))
     } catch (err) {
       console.error('Video upload error', err)

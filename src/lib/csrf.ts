@@ -120,7 +120,7 @@ const SECURITY_HEADERS: Record<string, string> = {
     "style-src 'self' 'unsafe-inline'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://maps.google.com",
     "frame-src 'self' https://www.google.com https://maps.google.com",
-    "connect-src 'self' https:",
+    "connect-src 'self' https: https://api.cloudinary.com",
     "worker-src 'self' blob:",
     "form-action 'self'",
     "base-uri 'self'",
