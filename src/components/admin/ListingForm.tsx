@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Category } from '@/data/products'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { Save, PlusCircle, ImagePlus, ArrowUp, XCircle, Sparkles, Video } from 'lucide-react'
 
 // Stored on Product.media. We never read this in the listing grid — it's
@@ -50,6 +51,7 @@ type ListingFormProps = {
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=420&fit=crop'
 
 export function ListingForm({ mode, categories, initialState, onSubmit, primaryLabel, submitting = false }: ListingFormProps) {
+  const { user } = useAuth()
   const firstCategory = categories[0]
   const firstSub = firstCategory?.subcategories[0]
 
@@ -291,11 +293,17 @@ export function ListingForm({ mode, categories, initialState, onSubmit, primaryL
     try {
       const fd = new FormData()
       fd.append('file', file)
+      // Send the admin JWT so the proxy's CSRF check exempts this
+      // request (see src/proxy.ts:76 — bearer-authenticated calls
+      // bypass CSRF because the JWT is itself the auth check). We
+      // intentionally do NOT set Content-Type — the browser will add
+      // the multipart boundary automatically.
+      const headers: Record<string, string> = {}
+      if (user?.token) headers['Authorization'] = `Bearer ${user.token}`
       const res = await fetch('/api/admin/upload-video', {
         method: 'POST',
+        headers,
         body: fd,
-        // Do NOT set Content-Type — the browser will set the
-        // multipart boundary automatically.
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data?.url) {
