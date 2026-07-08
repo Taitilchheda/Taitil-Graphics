@@ -1,12 +1,10 @@
 import Image, { type ImageProps } from 'next/image'
-import { useMemo } from 'react'
 
 /**
  * SmartImage wraps next/image with sensible defaults for the storefront:
  *  - AVIF/WebP via next.config.ts formats
  *  - placeholder: 'blur' with an inline 4x4 brand-tinted placeholder so
  *    cards paint something instead of a blank grey box while loading
- *  - optional Cloudinary loader if NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME is set
  *
  * Pass `priority` for above-the-fold / LCP images; pass `sizes` whenever
  * the image renders at a responsive width.
@@ -15,6 +13,13 @@ import { useMemo } from 'react'
  * are rejected and replaced with the brand logo — they can be 100+ KB
  * each and break the page. The DB should be cleaned up to use proper
  * URLs; this guard is a stopgap.
+ *
+ * IMPORTANT: This component is a Server Component on purpose. SmartImage
+ * is rendered from RSC pages (homepage, category pages) and a Cloudinary
+ * loader is wired up in next.config.ts — passing a `loader` function
+ * from a Server Component to a Client Component is not allowed, so we
+ * don't accept `loader` as a prop. Use next.config.ts to set the
+ * global loader instead.
  */
 
 const TINY_BLUR =
@@ -24,7 +29,7 @@ const FALLBACK_SRC = '/logo.svg'
 const isDataUrl = (src: unknown): boolean =>
   typeof src === 'string' && src.startsWith('data:')
 
-type SmartImageProps = Omit<ImageProps, 'placeholder' | 'blurDataURL' | 'quality' | 'src'> & {
+type SmartImageProps = Omit<ImageProps, 'placeholder' | 'blurDataURL' | 'quality' | 'src' | 'loader'> & {
   src: ImageProps['src']
   /** Use a darker placeholder suited for light-on-dark hero sections. */
   dark?: boolean
@@ -32,31 +37,18 @@ type SmartImageProps = Omit<ImageProps, 'placeholder' | 'blurDataURL' | 'quality
   quality?: ImageProps['quality']
 }
 
-const CLOUDINARY_CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-const cloudinaryLoader = ({ src, width, quality }: { src: string; width: number; quality?: number }) => {
-  if (!CLOUDINARY_CLOUD) return src
-  if (src.includes('res.cloudinary.com')) return src
-  const cleanSrc = src.startsWith('/') ? src.slice(1) : src
-  return `https://res.cloudinary.com/${CLOUDINARY_CLOUD}/image/upload/f_auto,q_${quality ?? 'auto'},w_${width}/${cleanSrc}`
-}
-
 export default function SmartImage({
-  dark = false,
   quality = 75,
-  loader,
   src,
   ...rest
 }: SmartImageProps) {
-  const blurDataURL = useMemo(() => (dark ? TINY_BLUR : TINY_BLUR), [dark])
-  const resolvedLoader = loader ?? (CLOUDINARY_CLOUD ? cloudinaryLoader : undefined)
   const safeSrc = isDataUrl(src) ? FALLBACK_SRC : src
   return (
     <Image
       src={safeSrc}
       placeholder="blur"
-      blurDataURL={blurDataURL}
+      blurDataURL={TINY_BLUR}
       quality={quality}
-      loader={resolvedLoader}
       {...rest}
     />
   )

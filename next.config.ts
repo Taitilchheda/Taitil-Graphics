@@ -2,12 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    // Serve next-gen formats first. Vercel/Cloudinary will pick AVIF when
-    // the browser supports it, then WebP, then the original.
+    // Serve next-gen formats first. Vercel's image optimizer picks AVIF
+    // when the browser supports it, then WebP, then the original.
     formats: ["image/avif", "image/webp"],
     // Keep optimized variants on the CDN for a year — products don't change
     // often, so re-optimizing on every visit is wasted CPU.
     minimumCacheTTL: 60 * 60 * 24 * 365,
+    // NOTE: A custom Cloudinary loader will go here once product images
+    // are stored as Cloudinary URLs in Mongo. For now we let next/image
+    // proxy remotePatterns (unsplash, cloudinary, via.placeholder) and
+    // AVIF/WebP-convert them on the fly through Vercel's optimizer.
     remotePatterns: [
       {
         protocol: "https",
