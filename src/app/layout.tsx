@@ -5,9 +5,8 @@ import { AuthProvider } from '@/components/providers/AuthProvider'
 import { CartProvider } from '@/components/providers/CartProvider'
 import { CatalogProvider } from '@/components/providers/CatalogProvider'
 import { AnalyticsProvider } from '@/components/providers/AnalyticsProvider'
+import ClientExtras from '@/components/ClientExtras'
 import { Toaster } from 'react-hot-toast'
-import ChatbotButton from '@/components/ui/ChatbotButton'
-import { SpeedInsights } from '@vercel/speed-insights/next'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -32,14 +31,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Preconnect to the heaviest third-party origins. Lets the browser
+            open the TLS handshake before the image element is parsed. */}
+        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
+        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="" />
+      </head>
       <body className={inter.className}>
         <AuthProvider>
           <CatalogProvider>
             <CartProvider>
               <AnalyticsProvider>
                 {children}
-                <ChatbotButton />
-                <SpeedInsights />
+                <ClientExtras />
                 <Toaster
                   position="bottom-left"
                   toastOptions={{

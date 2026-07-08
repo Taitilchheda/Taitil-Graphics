@@ -4,6 +4,7 @@ import { resolveHsnCode } from '@/lib/hsn'
 import { jsonWithCache } from '@/lib/response-cache'
 import { getAllProducts } from '@/data/products'
 import { requireAdmin } from '@/lib/server-auth'
+import { getCatalog, invalidateCatalog } from '@/lib/server-fetchers/products'
 
 const computeDiscountPercent = (mrpCents: number, listingCents: number) => {
   if (mrpCents <= 0) return 0
@@ -117,24 +118,16 @@ const seedCatalogIfEmpty = async () => {
 
 export async function GET() {
   try {
-    await seedCatalogIfEmpty()
-    const products = await prisma.product.findMany({
-      include: {
-        category: true,
-        subcategory: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    })
-    return jsonWithCache({ products, count: products.length }, { seconds: 30 })
+    const snapshot = await getCatalog()
+    return jsonWithCache(
+      { products: snapshot.products, count: snapshot.products.length, degraded: snapshot.degraded },
+      { seconds: 60 }
+    )
   } catch (error) {
     console.error('Products GET error', error)
     const fallbackProducts = getAllProducts()
     return jsonWithCache(
-      {
-        products: fallbackProducts,
-        count: fallbackProducts.length,
-        fallback: true,
-      },
+      { products: fallbackProducts, count: fallbackProducts.length, fallback: true },
       { seconds: 30 }
     )
   }
@@ -253,6 +246,9 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // New products invalidate the cached catalog so the homepage and
+    // /api/products pick them up on the next request (no 60s lag).
+    await invalidateCatalog()
     return NextResponse.json({ product: created }, { status: 201 })
   } catch (error) {
     console.error('Products POST error', error)

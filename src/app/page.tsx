@@ -1,14 +1,4 @@
-'use client'
-
-import { useEffect, useMemo, useState } from 'react'
-import { useAuth } from '@/components/providers/AuthProvider'
-import { useCatalog } from '@/components/providers/CatalogProvider'
-import { useAnalytics } from '@/components/providers/AnalyticsProvider'
-import { getPersonalizedHotSellers, getPersonalizedRecommendations } from '@/lib/recommendations'
-import Header from '@/components/layout/Header'
-import Footer from '@/components/layout/Footer'
 import Link from 'next/link'
-import Image from 'next/image'
 import {
   ArrowRight,
   Star,
@@ -19,34 +9,27 @@ import {
   Flame,
   Sparkles,
 } from 'lucide-react'
+import SmartImage from '@/components/ui/SmartImage'
+import HomeHeroCarousel from '@/components/home/HomeHeroCarousel'
+import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
+import { getHomeCatalog } from '@/lib/server-fetchers/products'
 
-export default function HomePage() {
-  const { user, isLoading } = useAuth()
-  const { categories, newListings, recommendedProducts, hotSellers, allProducts, getProductsByCategory } = useCatalog()
-  const { logEvent, events } = useAnalytics()
+export const revalidate = 60
 
-  const [heroIndex, setHeroIndex] = useState(0)
+export default async function HomePage() {
+  // Server-side fetch with the same 60s cache used by /api/products.
+  // If the DB is unreachable, the fetcher falls back to the static
+  // catalog in src/data/products.ts.
+  const { categories, newListings, recommended, hotSellers, products, degraded } = await getHomeCatalog()
 
-  const personalizedRecommended = useMemo(() => {
-    return getPersonalizedRecommendations(allProducts, events, recommendedProducts, 8)
-  }, [allProducts, events, recommendedProducts])
-
-  const personalizedHotSellers = useMemo(() => {
-    const seed = getPersonalizedHotSellers(allProducts, events, hotSellers, 8)
-    const deduped = seed.filter((product) => !personalizedRecommended.find((p) => p.id === product.id))
-    return deduped.length ? deduped : seed
-  }, [allProducts, events, hotSellers, personalizedRecommended])
-
-  const heroImages = useMemo(() => {
-    const products = [...newListings, ...personalizedRecommended, ...personalizedHotSellers]
+  const heroImages = (() => {
     const urls: string[] = []
-    for (const product of products) {
-      if (product?.image) {
-        urls.push(product.image)
-      }
+    for (const p of [...newListings, ...recommended, ...hotSellers]) {
+      if (p?.image) urls.push(p.image)
     }
-    const unique: string[] = []
     const seen = new Set<string>()
+    const unique: string[] = []
     for (const url of urls) {
       if (!url || seen.has(url)) continue
       seen.add(url)
@@ -59,43 +42,10 @@ export default function HomePage() {
           'https://images.unsplash.com/photo-1527515545081-5db817172677?w=400&h=240&fit=crop',
           'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=400&h=240&fit=crop',
         ]
-  }, [newListings, personalizedRecommended, personalizedHotSellers])
+  })()
 
-  useEffect(() => {
-    logEvent({ type: 'view', label: 'homepage' })
-  }, [logEvent])
-
-  useEffect(() => {
-    if (!heroImages.length) return
-    const timer = setInterval(() => {
-      setHeroIndex((prev) => (prev + 1) % heroImages.length)
-    }, 5500)
-    return () => clearInterval(timer)
-  }, [heroImages.length])
-
-  const heroCount = heroImages.length || 1
-  const heroPrimary = heroImages[heroIndex % heroCount]
-  const heroSecondary = heroImages[(heroIndex + 1) % heroCount]
-  const heroTertiary = heroImages[(heroIndex + 2) % heroCount]
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
-      </div>
-    )
-  }
-
-  const handleWhatsAppContact = () => {
-    const message = "Hi! I'm interested in your printing services. Could you please provide more information?"
-    const whatsappUrl = `https://wa.me/917666247666?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, '_blank')
-    logEvent({ type: 'inquiry', label: 'whatsapp-home' })
-  }
-
-  const handleCategoryClick = (categoryId: string) => {
-    logEvent({ type: 'click', categoryId, label: 'home-category-card' })
-  }
+  const firstProductImageByCategory = (categoryId: string) =>
+    products.find((p) => p.category === categoryId)?.image
 
   return (
     <div className="min-h-screen bg-white">
@@ -108,10 +58,10 @@ export default function HomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
                 <p className="inline-flex items-center text-sm font-semibold text-primary-700 bg-white px-3 py-1 rounded-full shadow-sm mb-4">
-                  <Sparkles className="w-4 h-4 mr-2" /> Everything for print, packaging & celebrations
+                  <Sparkles className="w-4 h-4 mr-2" /> Everything for print, packaging &amp; celebrations
                 </p>
                 <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
-                  Professional Printing &{' '}
+                  Professional Printing &amp;{' '}
                   <span className="text-primary-700">Celebration Decor</span>
                   <span className="block text-2xl text-gray-600 mt-3">You think it  We make it.</span>
                 </h1>
@@ -122,14 +72,12 @@ export default function HomePage() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
                     href="/categories/all"
-                    onClick={() => handleCategoryClick('all')}
                     className="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200"
                   >
                     Explore Catalog
                   </Link>
                   <Link
                     href="/categories/cake-decorations"
-                    onClick={() => handleCategoryClick('cake-decorations')}
                     className="border-2 border-primary-600 text-primary-700 hover:bg-white hover:text-primary-700 px-8 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center"
                   >
                     Cake Decor Picks
@@ -140,29 +88,11 @@ export default function HomePage() {
               <div className="relative">
                 <div className="absolute inset-0 bg-primary-200 blur-3xl opacity-50 rounded-full" />
                 <div className="relative bg-white rounded-2xl shadow-xl p-4 border border-primary-100">
-                  <Image
-                    src={heroPrimary}
-                    alt="Premium packaging and print"
-                    width={640}
-                    height={440}
-                    className="rounded-xl object-contain w-full h-[300px] sm:h-[360px] md:h-[380px] bg-white transition-opacity duration-700 ease-in-out"
+                  <HomeHeroCarousel
+                    images={heroImages}
+                    primarySizes="(min-width: 1024px) 640px, 100vw"
+                    secondarySizes="(min-width: 1024px) 300px, 50vw"
                   />
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    <Image
-                      src={heroSecondary}
-                      alt="Cake topper sample"
-                      width={300}
-                      height={200}
-                      className="rounded-lg object-contain w-full h-32 sm:h-36 bg-white transition-opacity duration-700 ease-in-out"
-                    />
-                    <Image
-                      src={heroTertiary}
-                      alt="Decor bundle"
-                      width={300}
-                      height={200}
-                      className="rounded-lg object-contain w-full h-32 sm:h-36 bg-white transition-opacity duration-700 ease-in-out"
-                    />
-                  </div>
                 </div>
               </div>
             </div>
@@ -181,37 +111,36 @@ export default function HomePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {categories.map((category) => {
-                const categoryProducts = getProductsByCategory(category.id);
-                const firstProductImage = categoryProducts.find(p => p.image)?.image;
-                
+                const firstProductImage = firstProductImageByCategory(category.id)
                 return (
-                <Link
-                  key={category.id}
-                  href={`/categories/${category.id}`}
-                  onClick={() => handleCategoryClick(category.id)}
-                  className="group bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden"
-                >
-                  <div className="aspect-w-16 aspect-h-9">
-                    <Image
-                      src={firstProductImage || 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=400&h=300&fit=crop'}
-                      alt={category.name}
-                      width={400}
-                      height={250}
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-primary-600 transition-colors">
-                      {category.name}
-                    </h3>
-                    <p className="text-gray-600 mb-4">{category.description}</p>
-                    <div className="flex items-center text-primary-600 font-medium">
-                      <span>Explore Products</span>
-                      <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <Link
+                    key={category.id}
+                    href={`/categories/${category.id}`}
+                    className="group bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden"
+                  >
+                    <div className="aspect-w-16 aspect-h-9">
+                      <SmartImage
+                        src={firstProductImage || 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=400&h=300&fit=crop'}
+                        alt={category.name}
+                        width={400}
+                        height={250}
+                        sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
                     </div>
-                  </div>
-                </Link>
-              )})}
+                    <div className="p-6">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-primary-600 transition-colors">
+                        {category.name}
+                      </h3>
+                      <p className="text-gray-600 mb-4">{category.description}</p>
+                      <div className="flex items-center text-primary-600 font-medium">
+                        <span>Explore Products</span>
+                        <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           </div>
         </section>
@@ -237,11 +166,12 @@ export default function HomePage() {
                   className="group bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-lg transition-all overflow-hidden"
                 >
                   <div className="bg-gray-50">
-                    <Image
+                    <SmartImage
                       src={product.image}
                       alt={product.name}
                       width={320}
                       height={200}
+                      sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                       className="w-full h-48 object-contain rounded-t-xl"
                     />
                   </div>
@@ -266,7 +196,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Featured Products */}
+        {/* Recommended Products */}
         <section className="py-16 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
@@ -277,24 +207,25 @@ export default function HomePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {personalizedRecommended.slice(0, 4).map((product) => (
+              {recommended.slice(0, 4).map((product) => (
                 <Link
                   key={product.id}
                   href={`/products/${product.id}`}
                   className="group bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden"
                 >
                   <div className="bg-gray-50">
-                    <Image
+                    <SmartImage
                       src={product.image}
                       alt={product.name}
                       width={300}
                       height={200}
+                      sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                       className="w-full h-48 object-contain"
                     />
                   </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-primary-700 transition-colors">{product.name}</h3>
-                                        <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                       <span className="text-primary-600 font-semibold">Contact for Quote</span>
                       <span className="text-primary-600 font-medium text-sm group-hover:translate-x-1 transition-transform">View Details</span>
                     </div>
@@ -322,18 +253,19 @@ export default function HomePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {personalizedHotSellers.slice(0, 4).map((product) => (
+              {hotSellers.slice(0, 4).map((product) => (
                 <Link
                   key={product.id}
                   href={`/products/${product.id}`}
                   className="group bg-gradient-to-br from-gray-50 to-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-all"
                 >
                   <div className="bg-white/60 rounded-lg mb-4">
-                    <Image
+                    <SmartImage
                       src={product.image}
                       alt={product.name}
                       width={280}
                       height={180}
+                      sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                       className="w-full h-44 object-contain rounded-lg"
                     />
                   </div>
@@ -408,16 +340,17 @@ export default function HomePage() {
               Get in touch with us today for a free consultation and quote
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                onClick={handleWhatsAppContact}
+              <a
+                href="https://wa.me/917666247666?text=Hi!%20I'm%20interested%20in%20your%20printing%20services.%20Could%20you%20please%20provide%20more%20information%3F"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors flex items-center justify-center"
               >
                 <MessageCircle className="w-5 h-5 mr-2" />
                 WhatsApp Us
-              </button>
+              </a>
               <Link
                 href="/categories/business-essentials"
-                onClick={() => handleCategoryClick('business-essentials')}
                 className="border-2 border-white text-white hover:bg-white hover:text-primary-600 px-8 py-3 rounded-lg font-semibold transition-colors"
               >
                 Browse Products
@@ -428,6 +361,10 @@ export default function HomePage() {
       </main>
 
       <Footer />
+
+      {degraded ? (
+        <p className="sr-only">Catalog served from static fallback.</p>
+      ) : null}
     </div>
   )
 }
